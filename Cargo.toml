@@ -6,20 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indicatif = {version = "0.17.7", features = ["rayon"]}
-crates-index = { version="3.4", features=["git", "git-https", "parallel"] }
+indicatif = { version = "0.17.7", features = ["rayon"] }
+crates-index = { version = "3.4", features = ["git", "git-https", "parallel"] }
 rayon = "1.9"
-semver = { version = "1.0.24" , features=[ "serde" ] }
+semver = { version = "1.0.24", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.6"
-internment = { version =  "0.8.0", features = ["serde"] }
-semver-pubgrub = { git="https://github.com/pubgrub-rs/semver-pubgrub", features=["serde"] }
-pubgrub = { git="https://github.com/pubgrub-rs/pubgrub", branch="dev", features=["serde"] }
+internment = { version = "0.8.0", features = ["serde"] }
+semver-pubgrub = { git = "https://github.com/pubgrub-rs/semver-pubgrub", features = ["serde"] }
+pubgrub = { git = "https://github.com/pubgrub-rs/pubgrub", branch = "dev", features = ["serde"] }
 itertools = "0.12.1"
 csv = "1.3.0"
-cargo = {git="https://github.com/rust-lang/cargo", branch="master"}
+cargo = { git = "https://github.com/rust-lang/cargo", branch = "master" }
 anyhow = "1.0.86"
-indexmap = "2.2.6"
 either = "1.13.0"
 clap = { version = "4.5.17", features = ["derive"] }
 rustc-hash = "2.0.0"

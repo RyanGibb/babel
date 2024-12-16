@@ -159,7 +159,6 @@ dependencies = [
  "crossbeam",
  "csv",
  "either",
- "indexmap",
  "indicatif",
  "internment",
  "itertools 0.12.1",
