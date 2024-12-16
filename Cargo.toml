@@ -25,6 +25,11 @@ rustc-hash = "2.0.0"
 crossbeam = { version = "0.8.4", features = ["crossbeam-queue"] }
 time = "0.3.37"
 
+[profile.profiling]
+inherits = "release"
+strip = false
+debug = "full"
+
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = "0.5"
 
