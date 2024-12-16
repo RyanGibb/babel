@@ -1,6 +1,6 @@
-use std::{sync::mpsc, thread, time::Instant};
-
 use crossbeam::channel::unbounded;
+use std::time::Duration;
+use std::{sync::mpsc, thread, time::Instant};
 
 use benchmark_from_crates::{
     index_data, process_crate_version, read_index::read_index, Index, Mode, OutputSummary,
@@ -92,10 +92,11 @@ fn main() {
         drop(to_prosses_tx);
 
         let template = "PubGrub: [Time: {elapsed}, Rate: {per_sec}, Remaining: {eta}] {wide_bar} {pos:>6}/{len:6}: {percent:>3}%";
-        let style = ProgressBar::new(to_prosses.len() as u64)
+        let pb = ProgressBar::new(to_prosses.len() as u64)
             .with_style(ProgressStyle::with_template(template).unwrap())
             .with_finish(ProgressFinish::AndLeave);
-        style.set_length(to_prosses.len() as _);
+        pb.enable_steady_tick(Duration::from_secs(1));
+        pb.set_length(to_prosses.len() as _);
 
         let mut file_name = "out".to_string();
         if args.with_solana {
@@ -115,7 +116,7 @@ fn main() {
         let mut cargo_pub_lock_cpu_time = 0.0;
         let mut pub_cargo_lock_cpu_time = 0.0;
         for row in out_rx {
-            style.inc(1);
+            pb.inc(1);
             pub_cpu_time += row.time;
             cargo_cpu_time += row.cargo_time;
             cargo_pub_lock_cpu_time += row.cargo_check_pub_lock_time;
@@ -124,7 +125,7 @@ fn main() {
         }
         let wall_time = start.elapsed().as_secs_f32();
         out_file.flush().unwrap();
-        style.finish();
+        pb.finish();
 
         println!("!!!!!!!!!! Timings !!!!!!!!!!");
         let p = |n: &str, t: f32| {
