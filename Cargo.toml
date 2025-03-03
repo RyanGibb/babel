@@ -1,0 +1,2 @@
+[workspace]
+members = ["pubgrub_debian", "pubgrub_opam"]
