@@ -1,2 +1,4 @@
 opam/target
 opam/opam-repository
+debian/target
+debian/repositories

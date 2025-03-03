@@ -1,0 +1,8 @@
+[package]
+name = "pubgrub_debian"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pubgrub = "0.3.0"
+rustc-hash = "=1.1.0"
