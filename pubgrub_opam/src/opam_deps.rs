@@ -84,6 +84,25 @@ impl Index {
                 .collect(),
             Package::Lor { lhs: _, rhs: _ } => vec![LHS_VERSION.clone(), RHS_VERSION.clone()],
             Package::Var(var) => match var.as_str() {
+                "os" => vec![
+                    OpamVersion("linux".to_string()),
+                    OpamVersion("macos".to_string()),
+                    OpamVersion("win32".to_string()),
+                    OpamVersion("cygwin".to_string()),
+                    OpamVersion("freebsd".to_string()),
+                    OpamVersion("openbsd".to_string()),
+                    OpamVersion("netbsd".to_string()),
+                    OpamVersion("dragonfly".to_string())
+                ],
+                "arch" => vec![
+                    OpamVersion("arm64".to_string()),
+                    OpamVersion("x86_32".to_string()),
+                    OpamVersion("x86_64".to_string()),
+                    OpamVersion("ppc32".to_string()),
+                    OpamVersion("ppc64".to_string()),
+                    OpamVersion("arm32".to_string()),
+                    OpamVersion("arm64".to_string()),
+                ],
                 _ => match VARIABLE_CACHE.lock().unwrap().get(var) {
                     Some(m) => m.iter().cloned().collect(),
                     None => vec![FALSE_VERSION.clone(), TRUE_VERSION.clone()],
