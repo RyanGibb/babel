@@ -6,12 +6,12 @@ use std::str::FromStr;
 
 use pubgrub::Range;
 
-use crate::debian_version::DebianVersion;
 use crate::index;
-use crate::index::{HashedRange, Index};
+use crate::index::{HashedRange, DebianIndex};
+use crate::version::DebianVersion;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DebianPackage {
+pub struct Package {
     pub package: String,
     pub version: String,
     pub depends: Vec<Dependency>,
@@ -180,7 +180,7 @@ fn parse_dependency_field(s: &str) -> Vec<Dependency> {
 /// Parse a single control file stanza into a DebianPackage.
 /// This simplified parser assumes that each field is "Field: value" on a single line
 /// (with simple support for continuation lines).
-pub fn parse_debian_package(stanza: &str) -> Result<DebianPackage, Box<dyn Error>> {
+pub fn parse_debian_package(stanza: &str) -> Result<Package, Box<dyn Error>> {
     let mut fields: HashMap<String, String> = HashMap::new();
     let mut current_key: Option<String> = None;
     let mut current_value = String::new();
@@ -222,7 +222,7 @@ pub fn parse_debian_package(stanza: &str) -> Result<DebianPackage, Box<dyn Error
         None => parse_dependency_field(""),
     };
 
-    Ok(DebianPackage {
+    Ok(Package {
         package,
         version,
         depends,
@@ -232,7 +232,7 @@ pub fn parse_debian_package(stanza: &str) -> Result<DebianPackage, Box<dyn Error
 
 /// Parse an entire control file (which may contain multiple stanzas)
 /// into a vector of DebianPackage entries.
-pub fn parse_debian_control<P: AsRef<Path>>(path: P) -> Result<Vec<DebianPackage>, Box<dyn Error>> {
+pub fn parse_debian_control<P: AsRef<Path>>(path: P) -> Result<Vec<Package>, Box<dyn Error>> {
     let content = fs::read_to_string(path)?;
     let stanzas: Vec<&str> = content
         .split("\n\n")
@@ -285,9 +285,9 @@ fn convert_dependency_field(parsed: &Vec<crate::parse::Dependency>) -> Vec<index
     parsed.iter().map(|dep| convert_dependency(dep)).collect()
 }
 
-pub fn create_index<P: AsRef<Path>>(path: P) -> Result<Index, Box<dyn Error>> {
+pub fn create_index<P: AsRef<Path>>(path: P) -> Result<DebianIndex, Box<dyn Error>> {
     let debian_packages = parse_debian_control(path)?;
-    let mut index = Index::new();
+    let mut index = DebianIndex::new();
     for dp in debian_packages {
         let ver = DebianVersion::from_str(&dp.version)
             .map_err(|e| format!("Error parsing version {}: {}", dp.version, e))?;
@@ -399,7 +399,7 @@ SHA256: 65bb2ee2cfce60b83523754c3768578417bbb23af760ddd26d53999f4da0f4e6
         let pkg = parse_debian_package(sample)?;
         assert_eq!(
             pkg,
-            DebianPackage {
+            Package {
                 package: "openssh-server".to_owned(),
                 version: "1:7.9p1-10+deb10u2".to_owned(),
                 depends: [

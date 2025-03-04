@@ -1,44 +1,44 @@
-use crate::debian_version::DebianVersion;
-use crate::index::{Dependency, Index};
+use crate::version::DebianVersion;
+use crate::index::{Dependency, DebianIndex};
 use core::fmt::Display;
 use pubgrub::{Dependencies, DependencyConstraints, DependencyProvider, Map, Range};
 use std::convert::Infallible;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Package {
-    Root(Vec<(Package, Range<DebianVersion>)>),
+pub enum DebianPackage {
+    Root(Vec<(DebianPackage, Range<DebianVersion>)>),
     Base(String),
     Proxy(Dependency),
 }
 
-impl FromStr for Package {
+impl FromStr for DebianPackage {
     type Err = String;
     fn from_str(pkg: &str) -> Result<Self, Self::Err> {
         let mut pkg_parts = pkg.split('/');
         match (pkg_parts.next(), pkg_parts.next()) {
-            (Some(base), None) => Ok(Package::Base(base.to_string())),
+            (Some(base), None) => Ok(DebianPackage::Base(base.to_string())),
             _ => Err(format!("{} is not a valid package name", pkg)),
         }
     }
 }
 
-impl Display for Package {
+impl Display for DebianPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Package::Root(_) => write!(f, "Root"),
-            Package::Base(pkg) => write!(f, "{}", pkg),
-            Package::Proxy(dependency) => write!(f, "{}", dependency),
+            DebianPackage::Root(_) => write!(f, "Root"),
+            DebianPackage::Base(pkg) => write!(f, "{}", pkg),
+            DebianPackage::Proxy(dependency) => write!(f, "{}", dependency),
         }
     }
 }
 
-impl Index {
-    pub fn list_versions(&self, package: &Package) -> impl Iterator<Item = DebianVersion> + '_ {
+impl DebianIndex {
+    pub fn list_versions(&self, package: &DebianPackage) -> impl Iterator<Item = DebianVersion> + '_ {
         let versions = match package {
-            Package::Root(_) => vec![DebianVersion("".to_string())],
-            Package::Base(pkg) => self.available_versions(pkg),
-            Package::Proxy(dependencies) => dependencies
+            DebianPackage::Root(_) => vec![DebianVersion("".to_string())],
+            DebianPackage::Base(pkg) => self.available_versions(pkg),
+            DebianPackage::Proxy(dependencies) => dependencies
                 .clone()
                 .alternatives
                 .into_iter()
@@ -64,8 +64,8 @@ impl Index {
     }
 }
 
-impl DependencyProvider for Index {
-    type P = Package;
+impl DependencyProvider for DebianIndex {
+    type P = DebianPackage;
 
     type V = DebianVersion;
 
@@ -99,12 +99,12 @@ impl DependencyProvider for Index {
 
     fn get_dependencies(
         &self,
-        package: &Package,
+        package: &DebianPackage,
         version: &DebianVersion,
     ) -> Result<Dependencies<Self::P, Self::VS, Self::M>, Self::Err> {
         match package {
-            Package::Root(deps) => Ok(Dependencies::Available(deps.into_iter().cloned().collect())),
-            Package::Base(pkg) => {
+            DebianPackage::Root(deps) => Ok(Dependencies::Available(deps.into_iter().cloned().collect())),
+            DebianPackage::Base(pkg) => {
                 let all_versions = match self.packages.get(pkg) {
                     None => return Ok(Dependencies::Unavailable("".to_string())),
                     Some(all_versions) => all_versions,
@@ -131,7 +131,7 @@ impl DependencyProvider for Index {
                 }
                 Ok(Dependencies::Available(deps))
             }
-            Package::Proxy(dependency) => {
+            DebianPackage::Proxy(dependency) => {
                 let deps = from_proxy(dependency, version);
                 if self.debug.get() {
                     print!("({}, {})", package, version);
@@ -156,12 +156,12 @@ impl DependencyProvider for Index {
 
 pub fn from_dependencies(
     dependencies: &Vec<Dependency>,
-) -> DependencyConstraints<Package, Range<DebianVersion>> {
+) -> DependencyConstraints<DebianPackage, Range<DebianVersion>> {
     let mut map = Map::default();
     for dependency in dependencies.clone() {
         match &dependency.alternatives[..] {
-            [dep] => map.insert(Package::Base(dep.name.clone()), dep.range.0.clone()),
-            _ => map.insert(Package::Proxy(dependency), Range::full()),
+            [dep] => map.insert(DebianPackage::Base(dep.name.clone()), dep.range.0.clone()),
+            _ => map.insert(DebianPackage::Proxy(dependency), Range::full()),
         };
     }
     map
@@ -170,12 +170,12 @@ pub fn from_dependencies(
 pub fn from_proxy(
     dependency: &Dependency,
     version: &DebianVersion,
-) -> DependencyConstraints<Package, Range<DebianVersion>> {
+) -> DependencyConstraints<DebianPackage, Range<DebianVersion>> {
     let mut map = Map::default();
     for alt in dependency.alternatives.clone() {
         match &alt.name {
             n if version.to_string().eq(n) => {
-                map.insert(Package::Base(alt.name), alt.range.0.clone());
+                map.insert(DebianPackage::Base(alt.name), alt.range.0.clone());
             }
             _ => {}
         }

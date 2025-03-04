@@ -4,11 +4,11 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
-use crate::debian_version::DebianVersion;
+use crate::version::DebianVersion;
 
 pub type PackageName = String;
 
-pub struct Index {
+pub struct DebianIndex {
     pub packages: Map<PackageName, BTreeMap<DebianVersion, Vec<Dependency>>>,
     pub debug: Cell<bool>,
     pub version_debug: Cell<bool>,
@@ -55,7 +55,7 @@ impl Display for Dependency {
     }
 }
 
-impl Index {
+impl DebianIndex {
     /// Empty new index.
     pub fn new() -> Self {
         Self {

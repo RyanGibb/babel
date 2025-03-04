@@ -3,12 +3,12 @@ use pubgrub::Range;
 use std::cell::Cell;
 use std::hash::{Hash, Hasher};
 
-use crate::opam_version::OpamVersion;
 use crate::parse::{available_versions_from_repo, RelOp};
+use crate::version::OpamVersion;
 
 pub type PackageName = String;
 
-pub struct Index {
+pub struct OpamIndex {
     pub repo: String,
     pub debug: Cell<bool>,
     pub version_debug: Cell<bool>,
@@ -125,7 +125,7 @@ impl Display for PackageFormula {
     }
 }
 
-impl Index {
+impl OpamIndex {
     pub fn new(repo: String) -> Self {
         Self {
             repo,

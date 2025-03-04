@@ -1,32 +1,38 @@
-use pubgrub::{DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter, SelectedDependencies};
-use pubgrub_opam::index::Index;
-use pubgrub_opam::opam_deps::Package;
-use pubgrub_opam::opam_version::OpamVersion;
+use pubgrub::{
+    DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter,
+    SelectedDependencies,
+};
+use pubgrub_opam::index::OpamIndex;
+use pubgrub_opam::{deps::OpamPackage, version::OpamVersion};
 use std::collections::{BTreeMap, HashSet};
 use std::error::Error;
 use std::str::FromStr;
 
-fn solve_repo(pkg: Package, version: OpamVersion, repo: &str) -> Result<SelectedDependencies<Index>, Box<dyn Error>> {
-    let index = Index::new(repo.to_string());
+fn solve_repo(
+    pkg: OpamPackage,
+    version: OpamVersion,
+    repo: &str,
+) -> Result<SelectedDependencies<OpamIndex>, Box<dyn Error>> {
+    let index = OpamIndex::new(repo.to_string());
     index.set_debug(true);
+    index.set_version_debug(true);
 
-    let sol: SelectedDependencies<Index> =
-        match pubgrub::resolve(&index, pkg, version) {
-            Ok(sol) => Ok(sol),
-            Err(PubGrubError::NoSolution(mut derivation_tree)) => {
-                derivation_tree.collapse_no_versions();
-                eprintln!("\n\n\n{}", DefaultStringReporter::report(&derivation_tree));
-                Err(PubGrubError::<Index>::NoSolution(derivation_tree))
-            }
-            Err(err) => panic!("{:?}", err),
-        }?;
+    let sol: SelectedDependencies<OpamIndex> = match pubgrub::resolve(&index, pkg, version) {
+        Ok(sol) => Ok(sol),
+        Err(PubGrubError::NoSolution(mut derivation_tree)) => {
+            derivation_tree.collapse_no_versions();
+            eprintln!("\n\n\n{}", DefaultStringReporter::report(&derivation_tree));
+            Err(PubGrubError::<OpamIndex>::NoSolution(derivation_tree))
+        }
+        Err(err) => panic!("{:?}", err),
+    }?;
 
     index.set_debug(false);
 
     fn get_resolved_deps<'a>(
-        index: &'a Index,
-        sol: &'a SelectedDependencies<Index>,
-        package: &Package,
+        index: &'a OpamIndex,
+        sol: &'a SelectedDependencies<OpamIndex>,
+        package: &OpamPackage,
         version: &'a OpamVersion,
     ) -> HashSet<(String, &'a OpamVersion)> {
         let dependencies = index.get_dependencies(&package, &version);
@@ -36,26 +42,57 @@ fn solve_repo(pkg: Package, version: OpamVersion, repo: &str) -> Result<Selected
                 for (dep_package, _dep_versions) in constraints {
                     let solved_version = sol.get(&dep_package).unwrap();
                     match dep_package.clone() {
-                        Package::Base(name) => {
+                        OpamPackage::Base(name) => {
                             dependents.insert((name, solved_version));
                         }
-                        Package::Lor { lhs : _, rhs : _ } => {
-                            dependents.extend(get_resolved_deps(&index, sol, &dep_package, solved_version));
+                        OpamPackage::Lor { lhs: _, rhs: _ } => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
                         }
-                        Package::Proxy { name : _, formula : _ } => {
-                            dependents.extend(get_resolved_deps(&index, sol, &dep_package, solved_version));
+                        OpamPackage::Proxy {
+                            name: _,
+                            formula: _,
+                        } => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
                         }
-                        Package::Formula { name : _, formula : _ } => {
-                            dependents.extend(get_resolved_deps(&index, sol, &dep_package, solved_version));
+                        OpamPackage::Formula {
+                            name: _,
+                            formula: _,
+                        } => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
                         }
-                        Package::Var(_) => {
+                        OpamPackage::Var(_) => {
                             dependents.insert((format!("{}", dep_package), solved_version));
                         }
-                        Package::Root(_deps) => {
-                            dependents.extend(get_resolved_deps(&index, sol, &dep_package, solved_version));
+                        OpamPackage::Root(_deps) => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
                         }
-                        Package::ConflictClass(_) => {
-                            dependents.extend(get_resolved_deps(&index, sol, &dep_package, solved_version));
+                        OpamPackage::ConflictClass(_) => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
                         }
                     };
                 }
@@ -71,13 +108,13 @@ fn solve_repo(pkg: Package, version: OpamVersion, repo: &str) -> Result<Selected
     println!("\nSolution Set:");
     for (package, version) in &sol {
         match package {
-            Package::Base(name) => {
+            OpamPackage::Base(name) => {
                 println!("\t({}, {})", name, version);
             }
-            Package::Var(name) => {
+            OpamPackage::Var(name) => {
                 println!("\t{} = {}", name, version);
             }
-            _ => ()
+            _ => (),
         }
     }
 
@@ -85,8 +122,10 @@ fn solve_repo(pkg: Package, version: OpamVersion, repo: &str) -> Result<Selected
         BTreeMap::new();
     for (package, version) in &sol {
         match package {
-            Package::Base(name) => {
-                let mut deps = get_resolved_deps(&index, &sol, &package, version).into_iter().collect::<Vec<_>>();
+            OpamPackage::Base(name) => {
+                let mut deps = get_resolved_deps(&index, &sol, &package, version)
+                    .into_iter()
+                    .collect::<Vec<_>>();
                 deps.sort_by(|(p1, _v1), (p2, _v2)| p1.cmp(p2));
                 resolved_graph.insert((name.clone(), version), deps);
             }
@@ -116,7 +155,7 @@ fn solve_repo(pkg: Package, version: OpamVersion, repo: &str) -> Result<Selected
 
 fn main() -> Result<(), Box<dyn Error>> {
     let _ = solve_repo(
-        Package::from_str("A").unwrap(),
+        OpamPackage::from_str("A").unwrap(),
         "1.0.0".parse::<OpamVersion>().unwrap(),
         "./example-repo/packages",
     );
@@ -127,14 +166,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 mod tests {
 
     use pubgrub::Range;
-    use pubgrub_opam::opam_deps::{FALSE_VERSION, TRUE_VERSION};
+    use pubgrub_opam::deps::{FALSE_VERSION, TRUE_VERSION};
 
     use super::*;
 
     #[test]
     fn test_simple_solve() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("A").unwrap(),
+            OpamPackage::from_str("A").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -144,7 +183,7 @@ mod tests {
     #[test]
     fn test_simple_error() -> Result<(), Box<dyn Error>> {
         let result = solve_repo(
-            Package::from_str("A").unwrap(),
+            OpamPackage::from_str("A").unwrap(),
             "2.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         );
@@ -155,7 +194,7 @@ mod tests {
     #[test]
     fn test_package_formula() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("package-formula").unwrap(),
+            OpamPackage::from_str("package-formula").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -165,7 +204,7 @@ mod tests {
     #[test]
     fn test_package_formula_and() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("package-formula-and").unwrap(),
+            OpamPackage::from_str("package-formula-and").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -175,7 +214,7 @@ mod tests {
     #[test]
     fn test_package_formula_and_error() -> Result<(), Box<dyn Error>> {
         let result = solve_repo(
-            Package::from_str("package-formula-and-error").unwrap(),
+            OpamPackage::from_str("package-formula-and-error").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         );
@@ -186,7 +225,7 @@ mod tests {
     #[test]
     fn test_package_formula_or() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("package-formula-or").unwrap(),
+            OpamPackage::from_str("package-formula-or").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -196,7 +235,7 @@ mod tests {
     #[test]
     fn test_package_formula_or2() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("package-formula-or").unwrap(),
+            OpamPackage::from_str("package-formula-or").unwrap(),
             "2.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -206,7 +245,7 @@ mod tests {
     #[test]
     fn test_package_formula_or3() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("package-formula-or").unwrap(),
+            OpamPackage::from_str("package-formula-or").unwrap(),
             "3.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -216,7 +255,7 @@ mod tests {
     #[test]
     fn test_package_formula_or_error() -> Result<(), Box<dyn Error>> {
         let result = solve_repo(
-            Package::from_str("package-formula-or-error").unwrap(),
+            OpamPackage::from_str("package-formula-or-error").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         );
@@ -224,11 +263,10 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
     fn test_package_formula_and_or() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("package-formula-and-or").unwrap(),
+            OpamPackage::from_str("package-formula-and-or").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -238,55 +276,80 @@ mod tests {
     #[test]
     fn test_filtered_package_formula_variable_simple() -> Result<(), Box<dyn Error>> {
         let sol = solve_repo(
-            Package::from_str("filtered-package-formula-variable").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-variable").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
-        assert_eq!(sol.get(&Package::Var("test".to_string())), Some("false".parse::<OpamVersion>().as_ref().unwrap()));
-        assert_eq!(sol.get(&Package::Var("build".to_string())), Some("true".parse::<OpamVersion>().as_ref().unwrap()));
+        assert_eq!(
+            sol.get(&OpamPackage::Var("test".to_string())),
+            Some("false".parse::<OpamVersion>().as_ref().unwrap())
+        );
+        assert_eq!(
+            sol.get(&OpamPackage::Var("build".to_string())),
+            Some("true".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
     #[test]
     fn test_filtered_package_formula_variable_set_test_true() -> Result<(), Box<dyn Error>> {
-        let root = Package::Root(vec![
-            (Package::Base("filtered-package-formula-variable".to_string()), Range::singleton(OpamVersion("1.0.0".to_string()))),
-            (Package::Var("test".to_string()), Range::singleton(TRUE_VERSION.clone())),
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("filtered-package-formula-variable".to_string()),
+                Range::singleton(OpamVersion("1.0.0".to_string())),
+            ),
+            (
+                OpamPackage::Var("test".to_string()),
+                Range::singleton(TRUE_VERSION.clone()),
+            ),
         ]);
-        let sol = solve_repo(
-            root,
-            OpamVersion("".to_string()),
-            "./example-repo/packages",
-        )?;
-        assert_eq!(sol.get(&Package::Var("test".to_string())), Some("true".parse::<OpamVersion>().as_ref().unwrap()));
-        assert_eq!(sol.get(&Package::Base("C".to_string())), Some("2.0.0".parse::<OpamVersion>().as_ref().unwrap()));
+        let sol = solve_repo(root, OpamVersion("".to_string()), "./example-repo/packages")?;
+        assert_eq!(
+            sol.get(&OpamPackage::Var("test".to_string())),
+            Some("true".parse::<OpamVersion>().as_ref().unwrap())
+        );
+        assert_eq!(
+            sol.get(&OpamPackage::Base("C".to_string())),
+            Some("2.0.0".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
     #[test]
     fn test_filtered_package_formula_variable_set_build_false() -> Result<(), Box<dyn Error>> {
-        let root = Package::Root(vec![
-            (Package::Base("filtered-package-formula-variable".to_string()), Range::singleton(OpamVersion("1.0.0".to_string()))),
-            (Package::Var("build".to_string()), Range::singleton(FALSE_VERSION.clone())),
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("filtered-package-formula-variable".to_string()),
+                Range::singleton(OpamVersion("1.0.0".to_string())),
+            ),
+            (
+                OpamPackage::Var("build".to_string()),
+                Range::singleton(FALSE_VERSION.clone()),
+            ),
         ]);
-        let sol = solve_repo(
-            root,
-            OpamVersion("".to_string()),
-            "./example-repo/packages",
-        )?;
-        assert_eq!(sol.get(&Package::Var("build".to_string())), Some("false".parse::<OpamVersion>().as_ref().unwrap()));
-        assert_eq!(sol.get(&Package::Base("B".to_string())), Some("2.0.0".parse::<OpamVersion>().as_ref().unwrap()));
+        let sol = solve_repo(root, OpamVersion("".to_string()), "./example-repo/packages")?;
+        assert_eq!(
+            sol.get(&OpamPackage::Var("build".to_string())),
+            Some("false".parse::<OpamVersion>().as_ref().unwrap())
+        );
+        assert_eq!(
+            sol.get(&OpamPackage::Base("B".to_string())),
+            Some("2.0.0".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
     #[test]
     fn test_filtered_package_formula_variable_string() -> Result<(), Box<dyn Error>> {
         let sol = solve_repo(
-            Package::from_str("filtered-package-formula-variable-string").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-variable-string").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
-        assert_eq!(sol.get(&Package::Var("os-family".to_string())), Some("debian".parse::<OpamVersion>().as_ref().unwrap()));
+        assert_eq!(
+            sol.get(&OpamPackage::Var("os-family".to_string())),
+            Some("debian".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
@@ -294,11 +357,14 @@ mod tests {
     #[test]
     fn test_filtered_package_formula_and_variable_simple() -> Result<(), Box<dyn Error>> {
         let sol = solve_repo(
-            Package::from_str("filtered-package-formula-and-variable").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-and-variable").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
-        assert_eq!(sol.get(&Package::Var("test".to_string())), Some("true".parse::<OpamVersion>().as_ref().unwrap()));
+        assert_eq!(
+            sol.get(&OpamPackage::Var("test".to_string())),
+            Some("true".parse::<OpamVersion>().as_ref().unwrap())
+        );
         // TODO or build true
         Ok(())
     }
@@ -306,30 +372,39 @@ mod tests {
     #[test]
     fn test_filtered_package_formula_variable_version() -> Result<(), Box<dyn Error>> {
         let sol = solve_repo(
-            Package::from_str("filtered-package-formula-variable-version").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-variable-version").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
-        assert_eq!(sol.get(&Package::Var("test".to_string())), Some("false".parse::<OpamVersion>().as_ref().unwrap()));
+        assert_eq!(
+            sol.get(&OpamPackage::Var("test".to_string())),
+            Some("false".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
     #[test]
     fn test_filtered_package_formula_and_simple() -> Result<(), Box<dyn Error>> {
         let sol = solve_repo(
-            Package::from_str("filtered-package-formula-and").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-and").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
-        assert_eq!(sol.get(&Package::Var("test".to_string())), Some("true".parse::<OpamVersion>().as_ref().unwrap()));
-        assert_eq!(sol.get(&Package::Var("build".to_string())), Some("false".parse::<OpamVersion>().as_ref().unwrap()));
+        assert_eq!(
+            sol.get(&OpamPackage::Var("test".to_string())),
+            Some("true".parse::<OpamVersion>().as_ref().unwrap())
+        );
+        assert_eq!(
+            sol.get(&OpamPackage::Var("build".to_string())),
+            Some("false".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
     #[test]
     fn test_filtered_package_formula_and_error() -> Result<(), Box<dyn Error>> {
         let result = solve_repo(
-            Package::from_str("filtered-package-formula-and-error").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-and-error").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         );
@@ -340,18 +415,21 @@ mod tests {
     #[test]
     fn test_filtered_package_formula_or_simple() -> Result<(), Box<dyn Error>> {
         let sol = solve_repo(
-            Package::from_str("filtered-package-formula-or").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-or").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
-        assert_eq!(sol.get(&Package::from_str("A").unwrap()), Some("1.0.0".parse::<OpamVersion>().as_ref().unwrap()));
+        assert_eq!(
+            sol.get(&OpamPackage::from_str("A").unwrap()),
+            Some("1.0.0".parse::<OpamVersion>().as_ref().unwrap())
+        );
         Ok(())
     }
 
     #[test]
     fn test_filtered_package_formula_or_error1() -> Result<(), Box<dyn Error>> {
         let result = solve_repo(
-            Package::from_str("filtered-package-formula-or-error").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-or-error").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         );
@@ -362,7 +440,7 @@ mod tests {
     #[test]
     fn test_filtered_package_formula_or_error2() -> Result<(), Box<dyn Error>> {
         let result = solve_repo(
-            Package::from_str("filtered-package-formula-or-error").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-or-error").unwrap(),
             "2.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         );
@@ -373,7 +451,7 @@ mod tests {
     #[test]
     fn test_filtered_package_formula_equality() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("filtered-package-formula-equality").unwrap(),
+            OpamPackage::from_str("filtered-package-formula-equality").unwrap(),
             "1.0.0".parse::<OpamVersion>().unwrap(),
             "./example-repo/packages",
         )?;
@@ -381,9 +459,9 @@ mod tests {
     }
 
     #[test]
-    fn test_opam_repository_dune() -> Result<(), Box<dyn Error>> {
+    fn test_opam_repository_dune_simple() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("dune").unwrap(),
+            OpamPackage::from_str("dune").unwrap(),
             "3.17.2".parse::<OpamVersion>().unwrap(),
             "./opam-repository/packages",
         )?;
@@ -392,21 +470,21 @@ mod tests {
 
     #[test]
     fn test_opam_repository_dune_with_variables() -> Result<(), Box<dyn Error>> {
-        let root = Package::Root(vec![
+        let root = OpamPackage::Root(vec![
             (
-                Package::Base("dune".to_string()),
+                OpamPackage::Base("dune".to_string()),
                 Range::singleton(OpamVersion("3.17.2".to_string())),
             ),
             (
-                Package::Var("arch".to_string()),
+                OpamPackage::Var("arch".to_string()),
                 Range::singleton(OpamVersion("x86_64".to_string())),
             ),
             (
-                Package::Var("os".to_string()),
+                OpamPackage::Var("os".to_string()),
                 Range::singleton(OpamVersion("linux".to_string())),
             ),
             (
-                Package::Var("post".to_string()),
+                OpamPackage::Var("post".to_string()),
                 Range::singleton(TRUE_VERSION.clone()),
             ),
         ]);
@@ -420,11 +498,23 @@ mod tests {
 
     #[test]
     fn test_opam_repository_ocaml_variants() -> Result<(), Box<dyn Error>> {
-        let root = Package::Root(vec![
-            (Package::Base("ocaml-variants".to_string()), Range::singleton(OpamVersion("5.3.1+trunk".to_string()))),
-            (Package::Var("arch".to_string()), Range::singleton(OpamVersion("arm64".to_string()))),
-            (Package::Var("os".to_string()), Range::singleton(OpamVersion("macos".to_string()))),
-            (Package::Var("post".to_string()), Range::singleton(TRUE_VERSION.clone())),
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("ocaml-variants".to_string()),
+                Range::singleton(OpamVersion("5.3.1+trunk".to_string())),
+            ),
+            (
+                OpamPackage::Var("arch".to_string()),
+                Range::singleton(OpamVersion("arm64".to_string())),
+            ),
+            (
+                OpamPackage::Var("os".to_string()),
+                Range::singleton(OpamVersion("macos".to_string())),
+            ),
+            (
+                OpamPackage::Var("post".to_string()),
+                Range::singleton(TRUE_VERSION.clone()),
+            ),
         ]);
         solve_repo(
             root,
