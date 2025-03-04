@@ -391,6 +391,34 @@ mod tests {
     }
 
     #[test]
+    fn test_opam_repository_dune_with_variables() -> Result<(), Box<dyn Error>> {
+        let root = Package::Root(vec![
+            (
+                Package::Base("dune".to_string()),
+                Range::singleton(OpamVersion("3.17.2".to_string())),
+            ),
+            (
+                Package::Var("arch".to_string()),
+                Range::singleton(OpamVersion("x86_64".to_string())),
+            ),
+            (
+                Package::Var("os".to_string()),
+                Range::singleton(OpamVersion("linux".to_string())),
+            ),
+            (
+                Package::Var("post".to_string()),
+                Range::singleton(TRUE_VERSION.clone()),
+            ),
+        ]);
+        solve_repo(
+            root,
+            OpamVersion("".to_string()),
+            "./opam-repository/packages",
+        )?;
+        Ok(())
+    }
+
+    #[test]
     fn test_opam_repository_ocaml_variants() -> Result<(), Box<dyn Error>> {
         let root = Package::Root(vec![
             (Package::Base("ocaml-variants".to_string()), Range::singleton(OpamVersion("5.3.1+trunk".to_string()))),

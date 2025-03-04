@@ -84,8 +84,6 @@ impl Index {
                 .collect(),
             Package::Lor { lhs: _, rhs: _ } => vec![LHS_VERSION.clone(), RHS_VERSION.clone()],
             Package::Var(var) => match var.as_str() {
-                "os" => vec![OpamVersion("macos".to_string())],
-                "arch" => vec![OpamVersion("arm64".to_string())],
                 _ => match VARIABLE_CACHE.lock().unwrap().get(var) {
                     Some(m) => m.iter().cloned().collect(),
                     None => vec![FALSE_VERSION.clone(), TRUE_VERSION.clone()],
@@ -158,7 +156,25 @@ impl DependencyProvider for Index {
         version: &OpamVersion,
     ) -> Result<Dependencies<Self::P, Self::VS, Self::M>, Self::Err> {
         match package {
-            Package::Root(deps) => Ok(Dependencies::Available(deps.into_iter().cloned().collect())),
+            Package::Root(deps) => {
+                for (package, range) in deps {
+                    match package {
+                        Package::Var(var) => {
+                            // TODO support enumerating versions with OR's
+                            if let Some(ver) = range.as_singleton() {
+                                VARIABLE_CACHE
+                                    .lock()
+                                    .unwrap()
+                                    .entry(var.to_string())
+                                    .or_insert_with(HashSet::new)
+                                    .insert(ver.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(Dependencies::Available(deps.into_iter().cloned().collect()))
+            }
             Package::Base(pkg) => {
                 let formulas = parse_dependencies_for_package_version(
                     self.repo.as_str(),
