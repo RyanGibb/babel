@@ -2,28 +2,28 @@ use pubgrub::{
     DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter,
     SelectedDependencies,
 };
-use pubgrub_debian::debian_deps::Package;
-use pubgrub_debian::debian_version::DebianVersion;
-use pubgrub_debian::index::Index;
+use pubgrub_debian::deps::DebianPackage;
+use pubgrub_debian::index::DebianIndex;
 use pubgrub_debian::parse::create_index;
+use pubgrub_debian::version::DebianVersion;
 use std::collections::{BTreeMap, HashSet};
 use std::error::Error;
 use std::str::FromStr;
 
 fn solve_repo(
-    pkg: Package,
+    pkg: DebianPackage,
     version: DebianVersion,
     repo: &str,
-) -> Result<SelectedDependencies<Index>, Box<dyn Error>> {
+) -> Result<SelectedDependencies<DebianIndex>, Box<dyn Error>> {
     let index = create_index(repo.to_string())?;
     index.set_debug(true);
 
-    let sol: SelectedDependencies<Index> = match pubgrub::resolve(&index, pkg, version) {
+    let sol: SelectedDependencies<DebianIndex> = match pubgrub::resolve(&index, pkg, version) {
         Ok(sol) => Ok(sol),
         Err(PubGrubError::NoSolution(mut derivation_tree)) => {
             derivation_tree.collapse_no_versions();
             eprintln!("\n\n\n{}", DefaultStringReporter::report(&derivation_tree));
-            Err(PubGrubError::<Index>::NoSolution(derivation_tree))
+            Err(PubGrubError::<DebianIndex>::NoSolution(derivation_tree))
         }
         Err(err) => panic!("{:?}", err),
     }?;
@@ -31,9 +31,9 @@ fn solve_repo(
     index.set_debug(false);
 
     fn get_resolved_deps<'a>(
-        index: &'a Index,
-        sol: &'a SelectedDependencies<Index>,
-        package: &Package,
+        index: &'a DebianIndex,
+        sol: &'a SelectedDependencies<DebianIndex>,
+        package: &DebianPackage,
         version: &'a DebianVersion,
     ) -> HashSet<(String, &'a DebianVersion)> {
         let dependencies = index.get_dependencies(&package, &version);
@@ -43,10 +43,10 @@ fn solve_repo(
                 for (dep_package, _dep_versions) in constraints {
                     let solved_version = sol.get(&dep_package).unwrap();
                     match dep_package.clone() {
-                        Package::Base(name) => {
+                        DebianPackage::Base(name) => {
                             dependents.insert((name, solved_version));
                         }
-                        Package::Proxy(_) => {
+                        DebianPackage::Proxy(_) => {
                             dependents.extend(get_resolved_deps(
                                 &index,
                                 sol,
@@ -54,8 +54,13 @@ fn solve_repo(
                                 solved_version,
                             ));
                         }
-                        Package::Root(_deps) => {
-                            dependents.extend(get_resolved_deps(&index, sol, &dep_package, solved_version));
+                        DebianPackage::Root(_deps) => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
                         }
                     };
                 }
@@ -71,7 +76,7 @@ fn solve_repo(
     println!("\nSolution Set:");
     for (package, version) in &sol {
         match package {
-            Package::Base(name) => {
+            DebianPackage::Base(name) => {
                 println!("\t({}, {})", name, version);
             }
             _ => (),
@@ -82,7 +87,7 @@ fn solve_repo(
         BTreeMap::new();
     for (package, version) in &sol {
         match package {
-            Package::Base(name) => {
+            DebianPackage::Base(name) => {
                 let mut deps = get_resolved_deps(&index, &sol, &package, version)
                     .into_iter()
                     .collect::<Vec<_>>();
@@ -115,7 +120,7 @@ fn solve_repo(
 
 fn main() -> Result<(), Box<dyn Error>> {
     let _ = solve_repo(
-        Package::from_str("openssh-server").unwrap(),
+        DebianPackage::from_str("openssh-server").unwrap(),
         "1:7.9p1-10+deb10u2".parse::<DebianVersion>().unwrap(),
         "./repositories/buster/Packages",
     );
@@ -131,7 +136,7 @@ mod tests {
     #[test]
     fn test_simple_solve() -> Result<(), Box<dyn Error>> {
         solve_repo(
-            Package::from_str("openssh-server").unwrap(),
+            DebianPackage::from_str("openssh-server").unwrap(),
             "1:7.9p1-10+deb10u2".parse::<DebianVersion>().unwrap(),
             "./repositories/buster/Packages",
         )?;
@@ -140,8 +145,8 @@ mod tests {
 
     #[test]
     fn test_filtered_package_formula_variable_set_test_true() -> Result<(), Box<dyn Error>> {
-        let root = Package::Root(vec![(
-            Package::Base("ssh-server".to_string()),
+        let root = DebianPackage::Root(vec![(
+            DebianPackage::Base("ssh-server".to_string()),
             Range::full(),
         )]);
         let _ = solve_repo(

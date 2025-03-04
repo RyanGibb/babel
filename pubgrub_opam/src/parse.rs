@@ -1,5 +1,5 @@
 use crate::index::{Binary, HashedRange, PackageFormula, VersionFormula};
-use crate::opam_version::OpamVersion;
+use crate::version::OpamVersion;
 use pubgrub::Range;
 use serde::Deserialize;
 use std::error::Error;
@@ -443,12 +443,12 @@ pub fn parse_dependencies_for_package_version(
 
     match opam_data.conflict_class {
         Some(conflict_class) => {
-            dependencies.push(PackageFormula::ConflictClass  {
+            dependencies.push(PackageFormula::ConflictClass {
                 name: conflict_class.clone(),
                 package: package.to_string(),
             });
         }
-        _ => ()
+        _ => (),
     }
 
     Ok(dependencies)

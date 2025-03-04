@@ -1,2 +1,7 @@
 [workspace]
-members = ["pubgrub_debian", "pubgrub_opam"]
+members = [
+    "pubgrub_babel",
+    "pubgrub_debian",
+    "pubgrub_opam",
+]
+resolver = "2"

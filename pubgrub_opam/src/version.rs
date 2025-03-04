@@ -122,7 +122,11 @@ fn compare_str_token(a: &str, b: &str) -> Ordering {
                 let is_letter1 = c1.is_alphabetic();
                 let is_letter2 = c2.is_alphabetic();
                 if is_letter1 != is_letter2 {
-                    return if is_letter1 { Ordering::Less } else { Ordering::Greater };
+                    return if is_letter1 {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    };
                 }
                 // Fallback: compare by ASCII value.
                 return c1.cmp(&c2);
@@ -166,7 +170,7 @@ impl Ord for OpamVersion {
                     } else {
                         Ordering::Less
                     }
-                },
+                }
                 // When other runs out of tokens.
                 (Some(t1), None) => {
                     if let Token::Str(s1) = t1 {
@@ -178,7 +182,7 @@ impl Ord for OpamVersion {
                     } else {
                         Ordering::Greater
                     }
-                },
+                }
                 (None, None) => Ordering::Equal,
             };
             if ord != Ordering::Equal {
@@ -260,27 +264,14 @@ mod tests {
         versions.sort();
 
         let expected_order = vec![
-            "~~",
-            "~",
-            "~beta2",
-            "~beta10",
-            "0.1",
-            "1.0~beta",
-            "1.0",
-            "1.0-test",
-            "1.0.1",
-            "1.0.10",
-            "dev",
-            "trunk",
+            "~~", "~", "~beta2", "~beta10", "0.1", "1.0~beta", "1.0", "1.0-test", "1.0.1",
+            "1.0.10", "dev", "trunk",
         ]
         .into_iter()
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
 
-        let sorted_versions = versions
-            .iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<_>>();
+        let sorted_versions = versions.iter().map(|v| v.to_string()).collect::<Vec<_>>();
 
         assert_eq!(sorted_versions, expected_order);
     }
