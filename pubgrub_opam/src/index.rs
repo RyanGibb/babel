@@ -58,6 +58,10 @@ pub enum PackageFormula {
         name: PackageName,
         formula: VersionFormula,
     },
+    Depext {
+        names: Vec<PackageName>,
+        formula: VersionFormula,
+    },
     ConflictClass {
         name: PackageName,
         package: PackageName,
@@ -111,6 +115,9 @@ impl Display for PackageFormula {
         match self {
             PackageFormula::Base { name, formula } => {
                 write!(f, "({} {{{}}})", name, formula)
+            }
+            PackageFormula::Depext { names, formula } => {
+                write!(f, "({:?} {{{}}})", names, formula)
             }
             PackageFormula::ConflictClass { name, package } => {
                 write!(f, "(Conflict class ({}, {}) )", name, package)

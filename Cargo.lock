@@ -120,6 +120,7 @@ version = "0.1.0"
 dependencies = [
  "itertools",
  "pubgrub",
+ "pubgrub_debian",
  "rustc-hash 1.1.0",
  "serde",
  "serde_json",

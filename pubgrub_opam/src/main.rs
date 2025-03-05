@@ -53,10 +53,7 @@ fn solve_repo(
                                 solved_version,
                             ));
                         }
-                        OpamPackage::Proxy {
-                            name: _,
-                            formula: _,
-                        } => {
+                        OpamPackage::Proxy { .. } => {
                             dependents.extend(get_resolved_deps(
                                 &index,
                                 sol,
@@ -64,10 +61,7 @@ fn solve_repo(
                                 solved_version,
                             ));
                         }
-                        OpamPackage::Formula {
-                            name: _,
-                            formula: _,
-                        } => {
+                        OpamPackage::Formula { .. } => {
                             dependents.extend(get_resolved_deps(
                                 &index,
                                 sol,
@@ -79,6 +73,14 @@ fn solve_repo(
                             dependents.insert((format!("{}", dep_package), solved_version));
                         }
                         OpamPackage::Root(_deps) => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
+                        }
+                        OpamPackage::Depext(_deps) => {
                             dependents.extend(get_resolved_deps(
                                 &index,
                                 sol,
@@ -514,6 +516,30 @@ mod tests {
             (
                 OpamPackage::Var("post".to_string()),
                 Range::singleton(TRUE_VERSION.clone()),
+            ),
+        ]);
+        solve_repo(
+            root,
+            OpamVersion("".to_string()),
+            "./opam-repository/packages",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_conf_gmp_variables() -> Result<(), Box<dyn Error>> {
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("conf-gmp".to_string()),
+                Range::singleton(OpamVersion("4".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-family".to_string()),
+                Range::singleton(OpamVersion("debian".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-distribution".to_string()),
+                Range::singleton(OpamVersion("debian".to_string())),
             ),
         ]);
         solve_repo(

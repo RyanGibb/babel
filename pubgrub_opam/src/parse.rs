@@ -14,6 +14,7 @@ pub struct OpamJson {
     pub name: Option<String>,
     pub version: Option<String>,
     pub depends: Option<DependsField>,
+    pub depexts: Option<Vec<DepextField>>,
     #[serde(rename = "conflict-class")]
     pub conflict_class: Option<String>,
 }
@@ -23,6 +24,13 @@ pub struct OpamJson {
 pub enum DependsField {
     Single(OpamPackageFormula),
     Multiple(Vec<OpamPackageFormula>),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DepextField {
+  #[serde(rename = "val")]
+  names: Vec<String>,
+  conditions: Vec<FilterExpr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -355,6 +363,18 @@ pub fn parse_package_formula(formula: &OpamPackageFormula) -> PackageFormula {
     }
 }
 
+pub fn parse_depext(depext: &DepextField) -> PackageFormula {
+    let formula = if depext.conditions.is_empty() {
+        VersionFormula::Version(HashedRange(Range::full()))
+    } else {
+        parse_filter_expr(&depext.conditions[0])
+    };
+    PackageFormula::Depext {
+        names: depext.names.clone(),
+        formula,
+    }
+}
+
 /// Given a repository path and a package name, returns a vector of available versions
 /// for that package, in descending order (newest first).
 ///
@@ -406,6 +426,13 @@ fn get_depends(formula: Option<DependsField>) -> Vec<OpamPackageFormula> {
     }
 }
 
+fn get_depexts(depexts: Option<Vec<DepextField>>) -> Vec<DepextField> {
+    match depexts {
+        Some(vec) => vec,
+        None => vec![],
+    }
+}
+
 /// Given a repository path, package name, and version,
 /// returns the dependency formulas for that package version.
 pub fn parse_dependencies_for_package_version(
@@ -450,6 +477,12 @@ pub fn parse_dependencies_for_package_version(
         }
         _ => (),
     }
+
+    let external_deps: Vec<PackageFormula> = get_depexts(opam_data.depexts)
+        .into_iter()
+        .map(|d| parse_depext(&d))
+        .collect();
+    dependencies.extend(external_deps);
 
     Ok(dependencies)
 }

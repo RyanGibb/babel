@@ -12,17 +12,18 @@ use std::sync::{LazyLock, Mutex};
 pub enum OpamPackage {
     Root(Vec<(OpamPackage, Range<OpamVersion>)>),
     Base(String),
+    Depext(Vec<String>),
     ConflictClass(String),
     Lor {
         lhs: Box<PackageFormula>,
         rhs: Box<PackageFormula>,
     },
     Formula {
-        name: String,
+        base: Box<OpamPackage>,
         formula: Box<VersionFormula>,
     },
     Proxy {
-        name: Option<String>,
+        base: Box<Option<OpamPackage>>,
         formula: Box<VersionFormula>,
     },
     Var(String),
@@ -50,11 +51,12 @@ impl Display for OpamPackage {
         match self {
             OpamPackage::Root(_) => write!(f, "Root"),
             OpamPackage::Base(pkg) => write!(f, "{}", pkg),
+            OpamPackage::Depext(pkgs) => write!(f, "{:?}", pkgs),
             OpamPackage::ConflictClass(pkg) => write!(f, "Conflict class {}", pkg),
             OpamPackage::Lor { lhs, rhs } => write!(f, "{} | {}", lhs, rhs),
-            OpamPackage::Formula { name, formula } => write!(f, "{} {{{}}}", name, formula),
-            OpamPackage::Proxy { name, formula } => match name {
-                Some(name) => write!(f, "{} {{{}}}", name, formula),
+            OpamPackage::Formula { base, formula } => write!(f, "{} {{{}}}", base, formula),
+            OpamPackage::Proxy { base, formula } => match *base.clone() {
+                Some(base) => write!(f, "{} {{{}}}", base, formula),
                 None => write!(f, "{{{}}}", formula),
             },
             OpamPackage::Var(var) => write!(f, "`{}`", var),
@@ -73,6 +75,7 @@ impl OpamIndex {
     pub fn list_versions(&self, package: &OpamPackage) -> impl Iterator<Item = OpamVersion> + '_ {
         let versions = match package {
             OpamPackage::Root(_) => vec![OpamVersion("".to_string())],
+            OpamPackage::Depext(_) => vec![OpamVersion("".to_string())],
             OpamPackage::Base(pkg) => self.available_versions(pkg),
             OpamPackage::ConflictClass(pkg) => CONFLICT_CLASS_CACHE
                 .lock()
@@ -109,11 +112,11 @@ impl OpamIndex {
                 },
             },
             OpamPackage::Formula {
-                name: _,
+                base: _,
                 formula: _,
             } => vec![FALSE_VERSION.clone(), TRUE_VERSION.clone()],
             OpamPackage::Proxy {
-                name: _,
+                base: _,
                 formula: _,
             } => vec![LHS_VERSION.clone(), RHS_VERSION.clone()],
         };
@@ -245,10 +248,10 @@ impl DependencyProvider for OpamIndex {
                 }
                 Ok(Dependencies::Available(deps))
             }
-            OpamPackage::Formula { name, formula } => {
+            OpamPackage::Formula { base, formula } => {
                 let deps = match version {
                     OpamVersion(ver) => match ver.as_str() {
-                        "true" => from_version_formula(Some(&name), formula),
+                        "true" => from_version_formula(Some(&base), formula),
                         "false" => {
                             from_version_formula(None, &Box::new(negate_formula(*formula.clone())))
                         }
@@ -272,8 +275,8 @@ impl DependencyProvider for OpamIndex {
                 }
                 Ok(Dependencies::Available(deps))
             }
-            OpamPackage::Proxy { name, formula } => {
-                let deps = from_proxy_formula(name.as_ref(), version, formula);
+            OpamPackage::Proxy { base, formula } => {
+                let deps = from_proxy_formula(base.as_ref().as_ref(), version, formula);
                 if self.debug.get() {
                     print!("({}, {})", package, version);
                     if deps.len() > 0 {
@@ -292,6 +295,12 @@ impl DependencyProvider for OpamIndex {
                 Ok(Dependencies::Available(deps))
             }
             OpamPackage::Var(_) => {
+                if self.debug.get() {
+                    println!("({}, {})", package, version);
+                }
+                Ok(Dependencies::Available(Map::default()))
+            }
+            OpamPackage::Depext(_) => {
                 if self.debug.get() {
                     println!("({}, {})", package, version);
                 }
@@ -324,7 +333,25 @@ fn from_formula(
                 // otherwise, we need to introduce a formula packge to select variable values
                 _ => map.insert(
                     OpamPackage::Formula {
-                        name: name.to_string(),
+                        base: Box::new(OpamPackage::Base(name.to_string())),
+                        formula: Box::new(formula.clone()),
+                    },
+                    Range::full(),
+                ),
+            };
+            map
+        }
+        PackageFormula::Depext { names, formula } => {
+            let mut map = Map::default();
+            match formula {
+                // in parse.rs we collapse non-filtered formula to a single version dependency
+                VersionFormula::Version(range) => {
+                    map.insert(OpamPackage::Depext(names.to_vec()), range.0.clone())
+                }
+                // otherwise, we need to introduce a formula packge to select variable values
+                _ => map.insert(
+                    OpamPackage::Formula {
+                        base: Box::new(OpamPackage::Depext(names.to_vec())),
                         formula: Box::new(formula.clone()),
                     },
                     Range::full(),
@@ -419,7 +446,7 @@ fn negate_formula(expr: VersionFormula) -> VersionFormula {
 }
 
 fn from_proxy_formula(
-    name: Option<&String>,
+    base: Option<&OpamPackage>,
     version: &OpamVersion,
     formula: &VersionFormula,
 ) -> DependencyConstraints<OpamPackage, Range<OpamVersion>> {
@@ -427,8 +454,8 @@ fn from_proxy_formula(
     match formula {
         VersionFormula::Or(Binary { lhs, rhs }) => match version {
             OpamVersion(ver) => match ver.as_str() {
-                "lhs" => from_version_formula(name, lhs),
-                "rhs" => from_version_formula(name, rhs),
+                "lhs" => from_version_formula(base, lhs),
+                "rhs" => from_version_formula(base, rhs),
                 _ => panic!("Unknown Formula version {}", version),
             },
         },
@@ -436,13 +463,13 @@ fn from_proxy_formula(
             RelOp::Eq => match version {
                 OpamVersion(ver) => match ver.as_str() {
                     "lhs" => {
-                        let lhs = from_version_formula(name, &*binary.lhs);
-                        let rhs = from_version_formula(name, &*binary.rhs);
+                        let lhs = from_version_formula(base, &*binary.lhs);
+                        let rhs = from_version_formula(base, &*binary.rhs);
                         merge_constraints(lhs, rhs)
                     }
                     "rhs" => {
-                        let lhs = from_version_formula(name, &negate_formula(*binary.lhs.clone()));
-                        let rhs = from_version_formula(name, &negate_formula(*binary.rhs.clone()));
+                        let lhs = from_version_formula(base, &negate_formula(*binary.lhs.clone()));
+                        let rhs = from_version_formula(base, &negate_formula(*binary.rhs.clone()));
                         merge_constraints(lhs, rhs)
                     }
                     _ => panic!("Unknown Formula version {}", version),
@@ -451,20 +478,20 @@ fn from_proxy_formula(
             RelOp::Neq => match version {
                 OpamVersion(ver) => match ver.as_str() {
                     "lhs" => {
-                        let lhs = from_version_formula(name, &*binary.lhs);
-                        let rhs = from_version_formula(name, &negate_formula(*binary.rhs.clone()));
+                        let lhs = from_version_formula(base, &*binary.lhs);
+                        let rhs = from_version_formula(base, &negate_formula(*binary.rhs.clone()));
                         merge_constraints(lhs, rhs)
                     }
                     "rhs" => {
-                        let lhs = from_version_formula(name, &negate_formula(*binary.lhs.clone()));
-                        let rhs = from_version_formula(name, &*binary.rhs);
+                        let lhs = from_version_formula(base, &negate_formula(*binary.lhs.clone()));
+                        let rhs = from_version_formula(base, &*binary.rhs);
                         merge_constraints(lhs, rhs)
                     }
                     _ => panic!("Unknown Formula version {}", version),
                 },
             },
-            _ => match name {
-                Some(name) => panic!("invalid operator for {}: {}", name, formula),
+            _ => match base {
+                Some(base) => panic!("invalid operator for {}: {}", base, formula),
                 None => panic!("invalid operator for {}", formula),
             },
         },
@@ -473,20 +500,20 @@ fn from_proxy_formula(
 }
 
 fn from_version_formula(
-    name: Option<&String>,
+    base: Option<&OpamPackage>,
     formula: &VersionFormula,
 ) -> DependencyConstraints<OpamPackage, Range<OpamVersion>> {
     let mut map = Map::default();
     match formula {
         VersionFormula::Version(range) => {
-            if let Some(name) = name {
-                map.insert(OpamPackage::Base(name.to_string()), range.0.clone());
+            if let Some(base) = base {
+                map.insert(base.clone(), range.0.clone());
             };
             map
         }
         VersionFormula::Variable(variable) => {
-            if let Some(name) = name {
-                map.insert(OpamPackage::Base(name.to_string()), Range::full());
+            if let Some(base) = base {
+                map.insert(base.clone(), Range::full());
             };
             map.insert(
                 OpamPackage::Var(variable.to_string()),
@@ -495,8 +522,8 @@ fn from_version_formula(
             map
         }
         VersionFormula::Not(variable) => {
-            if let Some(name) = name {
-                map.insert(OpamPackage::Base(name.to_string()), Range::full());
+            if let Some(base) = base {
+                map.insert(base.clone(), Range::full());
             };
             map.insert(
                 OpamPackage::Var(variable.to_string()),
@@ -507,7 +534,7 @@ fn from_version_formula(
         VersionFormula::Or(_) => {
             map.insert(
                 OpamPackage::Proxy {
-                    name: name.cloned(),
+                    base: Box::new(base.cloned()),
                     formula: Box::new(formula.clone()),
                 },
                 Range::full(),
@@ -515,11 +542,14 @@ fn from_version_formula(
             map
         }
         VersionFormula::And(Binary { lhs, rhs }) => {
-            let left = from_version_formula(name, lhs);
-            let right = from_version_formula(name, rhs);
+            let left = from_version_formula(base, lhs);
+            let right = from_version_formula(base, rhs);
             merge_constraints(left, right)
         }
         VersionFormula::Comparator { relop, binary } => {
+            if let Some(base) = base {
+                map.insert(base.clone(), Range::full());
+            };
             match (*binary.lhs.clone(), *binary.rhs.clone()) {
                 (VersionFormula::Lit(ver), VersionFormula::Variable(var)) => {
                     VARIABLE_CACHE
@@ -544,21 +574,21 @@ fn from_version_formula(
                 _ => match relop {
                     RelOp::Eq | RelOp::Neq => map.insert(
                         OpamPackage::Proxy {
-                            name: name.cloned(),
+                            base: Box::new(base.cloned()),
                             formula: Box::new(formula.clone()),
                         },
                         Range::full(),
                     ),
-                    _ => match name {
-                        Some(name) => panic!("invalid operator for {}: {}", name, formula),
+                    _ => match base {
+                        Some(base) => panic!("invalid operator for {}: {}", base, formula),
                         None => panic!("invalid operator for {}", formula),
                     },
                 },
             };
             map
         }
-        VersionFormula::Lit(lit) => match name {
-            Some(name) => panic!("invalid literal for {} {{{}}}: {}", name, formula, lit),
+        VersionFormula::Lit(lit) => match base {
+            Some(base) => panic!("invalid literal for {} {{{}}}: {}", base, formula, lit),
             None => panic!("invalid literal for {{{}}}: {}", formula, lit),
         },
     }

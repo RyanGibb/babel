@@ -64,10 +64,7 @@ fn solve_repo(
                                         solved_version,
                                     ));
                                 }
-                                OpamPackage::Proxy {
-                                    name: _,
-                                    formula: _,
-                                } => {
+                                OpamPackage::Proxy { .. } => {
                                     dependents.extend(get_resolved_deps(
                                         &index,
                                         sol,
@@ -75,10 +72,7 @@ fn solve_repo(
                                         solved_version,
                                     ));
                                 }
-                                OpamPackage::Formula {
-                                    name: _,
-                                    formula: _,
-                                } => {
+                                OpamPackage::Formula { .. } => {
                                     dependents.extend(get_resolved_deps(
                                         &index,
                                         sol,
@@ -90,6 +84,14 @@ fn solve_repo(
                                     dependents.insert((format!("{}", dep_package), solved_version));
                                 }
                                 OpamPackage::Root(_deps) => {
+                                    dependents.extend(get_resolved_deps(
+                                        &index,
+                                        sol,
+                                        &dep_package,
+                                        solved_version,
+                                    ));
+                                }
+                                OpamPackage::Depext(_deps) => {
                                     dependents.extend(get_resolved_deps(
                                         &index,
                                         sol,
@@ -143,14 +145,31 @@ fn solve_repo(
 
     println!("\nSolution Set:");
     for (package, version) in &sol {
-        println!("\t({}, {})", package, version);
+        match package {
+            BabelPackage::Opam(pkg) => match pkg {
+                OpamPackage::Base(name) => {
+                    println!("\tOpam\t({}, {})", name, version);
+                }
+                OpamPackage::Var(name) => {
+                    println!("\tOpam\t{} = {}", name, version);
+                }
+                _ => (),
+            },
+            BabelPackage::Debian(pkg) => match pkg {
+                DebianPackage::Base(name) => {
+                    println!("\tDebian\t({}, {})", name, version);
+                }
+                _ => (),
+            },
+        }
     }
 
     let mut resolved_graph: BTreeMap<(String, &BabelVersion), Vec<(String, &BabelVersion)>> =
         BTreeMap::new();
     for (package, version) in &sol {
         match package {
-            BabelPackage::Opam(OpamPackage::Base(name)) | BabelPackage::Debian(DebianPackage::Base(name)) => {
+            BabelPackage::Opam(OpamPackage::Base(name))
+            | BabelPackage::Debian(DebianPackage::Base(name)) => {
                 let mut deps = get_resolved_deps(&index, &sol, &package, version)
                     .into_iter()
                     .collect::<Vec<_>>();
@@ -190,7 +209,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -260,6 +278,56 @@ mod tests {
         solve_repo(
             BabelPackage::Debian(root),
             BabelVersion::Debian(DebianVersion("".to_string())),
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_conf_gmp_variables() -> Result<(), Box<dyn Error>> {
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("conf-gmp".to_string()),
+                Range::singleton(OpamVersion("4".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-family".to_string()),
+                Range::singleton(OpamVersion("debian".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-distribution".to_string()),
+                Range::singleton(OpamVersion("debian".to_string())),
+            ),
+        ]);
+        solve_repo(
+            BabelPackage::Opam(root),
+            BabelVersion::Opam(OpamVersion("".to_string())),
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_ocluster() -> Result<(), Box<dyn Error>> {
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("ocluster".to_string()),
+                Range::singleton(OpamVersion("0.3.0".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-family".to_string()),
+                Range::singleton(OpamVersion("debian".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-distribution".to_string()),
+                Range::singleton(OpamVersion("debian".to_string())),
+            ),
+        ]);
+        solve_repo(
+            BabelPackage::Opam(root),
+            BabelVersion::Opam(OpamVersion("".to_string())),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
         )?;

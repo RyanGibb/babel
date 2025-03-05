@@ -10,3 +10,4 @@ itertools = "0.10.1"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 walkdir = "2.3"
+pubgrub_debian = { path = "../pubgrub_debian" }

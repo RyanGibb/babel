@@ -1,7 +1,7 @@
 use crate::index::BabelIndex;
 use crate::version::BabelVersion;
 use core::fmt::Display;
-use pubgrub::{Dependencies, DependencyProvider, Range};
+use pubgrub::{Dependencies, DependencyProvider, Map, Range};
 use std::convert::Infallible;
 
 use pubgrub_debian::deps::DebianPackage;
@@ -16,8 +16,8 @@ pub enum BabelPackage {
 impl Display for BabelPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BabelPackage::Opam(pkg) => write!(f, "{}", pkg),
-            BabelPackage::Debian(pkg) => write!(f, "{}", pkg),
+            BabelPackage::Opam(pkg) => write!(f, "Opam {}", pkg),
+            BabelPackage::Debian(pkg) => write!(f, "Debian {}", pkg),
         }
     }
 }
@@ -81,11 +81,24 @@ impl DependencyProvider for BabelIndex {
         match package {
             BabelPackage::Opam(pkg) => {
                 if let BabelVersion::Opam(ver) = version {
-                    let deps = match self.opam.get_dependencies(pkg, ver)? {
-                        Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
-                        Dependencies::Available(dc) => Dependencies::Available(
-                            dc.into_iter().map(|(p, vs)| (BabelPackage::Opam(p), vs.into_iter().map(|(s, e)| (s.map(|v| BabelVersion::Opam(v)), e.map(|v| BabelVersion::Opam(v)))).collect())).collect(),
-                        ),
+                    let deps = match pkg {
+                        OpamPackage::Depext(depexts) => {
+                            let mut map = Map::default();
+                            for depext in depexts {
+                                // TODO handle virtual packages
+                                map.insert(BabelPackage::Debian(DebianPackage::Base(depext.to_string())), Range::<BabelVersion>::full());
+                            };
+                            Dependencies::Available(map)
+                        }
+                        _ => {
+                            let deps = match self.opam.get_dependencies(pkg, ver)? {
+                                Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
+                                Dependencies::Available(dc) => Dependencies::Available(
+                                    dc.into_iter().map(|(p, vs)| (BabelPackage::Opam(p), vs.into_iter().map(|(s, e)| (s.map(|v| BabelVersion::Opam(v)), e.map(|v| BabelVersion::Opam(v)))).collect())).collect(),
+                                ),
+                            };
+                            deps
+                        }
                     };
                     Ok(deps)
                 } else {
