@@ -204,8 +204,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     solve_repo(
         BabelPackage::Opam(OpamPackage::from_str("A").unwrap()),
         BabelVersion::Opam("1.0.0".parse::<OpamVersion>().unwrap()),
-        "../pubgrub_opam/example-repo/packages",
-        "../pubgrub_debian/repositories/buster/Packages",
+        "pubgrub_opam/example-repo/packages",
+        "pubgrub_debian/repositories/buster/Packages",
     )?;
     Ok(())
 }
@@ -315,6 +315,10 @@ mod tests {
             (
                 OpamPackage::Base("ocluster".to_string()),
                 Range::singleton(OpamVersion("0.3.0".to_string())),
+            ),
+            (
+                OpamPackage::Base("opam-devel".to_string()),
+                Range::full(),
             ),
             (
                 OpamPackage::Var("os-family".to_string()),

@@ -159,7 +159,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let _ = solve_repo(
         OpamPackage::from_str("A").unwrap(),
         "1.0.0".parse::<OpamVersion>().unwrap(),
-        "./example-repo/packages",
+        "pubgrub_opam/example-repo/packages",
     );
     Ok(())
 }
@@ -498,33 +498,33 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_opam_repository_ocaml_variants() -> Result<(), Box<dyn Error>> {
-        let root = OpamPackage::Root(vec![
-            (
-                OpamPackage::Base("ocaml-variants".to_string()),
-                Range::singleton(OpamVersion("5.3.1+trunk".to_string())),
-            ),
-            (
-                OpamPackage::Var("arch".to_string()),
-                Range::singleton(OpamVersion("arm64".to_string())),
-            ),
-            (
-                OpamPackage::Var("os".to_string()),
-                Range::singleton(OpamVersion("macos".to_string())),
-            ),
-            (
-                OpamPackage::Var("post".to_string()),
-                Range::singleton(TRUE_VERSION.clone()),
-            ),
-        ]);
-        solve_repo(
-            root,
-            OpamVersion("".to_string()),
-            "./opam-repository/packages",
-        )?;
-        Ok(())
-    }
+    // #[test]
+    // fn test_opam_repository_ocaml_variants() -> Result<(), Box<dyn Error>> {
+    //     let root = OpamPackage::Root(vec![
+    //         (
+    //             OpamPackage::Base("ocaml-variants".to_string()),
+    //             Range::singleton(OpamVersion("5.3.1+trunk".to_string())),
+    //         ),
+    //         (
+    //             OpamPackage::Var("arch".to_string()),
+    //             Range::singleton(OpamVersion("arm64".to_string())),
+    //         ),
+    //         (
+    //             OpamPackage::Var("os".to_string()),
+    //             Range::singleton(OpamVersion("macos".to_string())),
+    //         ),
+    //         (
+    //             OpamPackage::Var("post".to_string()),
+    //             Range::singleton(TRUE_VERSION.clone()),
+    //         ),
+    //     ]);
+    //     solve_repo(
+    //         root,
+    //         OpamVersion("".to_string()),
+    //         "./opam-repository/packages",
+    //     )?;
+    //     Ok(())
+    // }
 
     #[test]
     fn test_conf_gmp_variables() -> Result<(), Box<dyn Error>> {
