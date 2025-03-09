@@ -8,9 +8,6 @@ pub struct BabelIndex {
 
 impl BabelIndex {
     pub fn new(opam: OpamIndex, debian: DebianIndex) -> Self {
-        Self {
-            opam,
-            debian,
-        }
+        Self { opam, debian }
     }
 }

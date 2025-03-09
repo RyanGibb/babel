@@ -86,15 +86,32 @@ impl DependencyProvider for BabelIndex {
                             let mut map = Map::default();
                             for depext in depexts {
                                 // TODO handle virtual packages
-                                map.insert(BabelPackage::Debian(DebianPackage::Base(depext.to_string())), Range::<BabelVersion>::full());
-                            };
+                                map.insert(
+                                    BabelPackage::Debian(DebianPackage::Base(depext.to_string())),
+                                    Range::<BabelVersion>::full(),
+                                );
+                            }
                             Dependencies::Available(map)
                         }
                         _ => {
                             let deps = match self.opam.get_dependencies(pkg, ver)? {
                                 Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
                                 Dependencies::Available(dc) => Dependencies::Available(
-                                    dc.into_iter().map(|(p, vs)| (BabelPackage::Opam(p), vs.into_iter().map(|(s, e)| (s.map(|v| BabelVersion::Opam(v)), e.map(|v| BabelVersion::Opam(v)))).collect())).collect(),
+                                    dc.into_iter()
+                                        .map(|(p, vs)| {
+                                            (
+                                                BabelPackage::Opam(p),
+                                                vs.into_iter()
+                                                    .map(|(s, e)| {
+                                                        (
+                                                            s.map(|v| BabelVersion::Opam(v)),
+                                                            e.map(|v| BabelVersion::Opam(v)),
+                                                        )
+                                                    })
+                                                    .collect(),
+                                            )
+                                        })
+                                        .collect(),
                                 ),
                             };
                             deps
@@ -110,7 +127,21 @@ impl DependencyProvider for BabelIndex {
                     let deps = match self.debian.get_dependencies(pkg, ver)? {
                         Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
                         Dependencies::Available(dc) => Dependencies::Available(
-                            dc.into_iter().map(|(p, vs)| (BabelPackage::Debian(p), vs.into_iter().map(|(s, e)| (s.map(|v| BabelVersion::Debian(v)), e.map(|v| BabelVersion::Debian(v)))).collect())).collect(),
+                            dc.into_iter()
+                                .map(|(p, vs)| {
+                                    (
+                                        BabelPackage::Debian(p),
+                                        vs.into_iter()
+                                            .map(|(s, e)| {
+                                                (
+                                                    s.map(|v| BabelVersion::Debian(v)),
+                                                    e.map(|v| BabelVersion::Debian(v)),
+                                                )
+                                            })
+                                            .collect(),
+                                    )
+                                })
+                                .collect(),
                         ),
                     };
                     Ok(deps)

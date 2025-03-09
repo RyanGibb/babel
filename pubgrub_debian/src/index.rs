@@ -56,7 +56,6 @@ impl Display for Dependency {
 }
 
 impl DebianIndex {
-    /// Empty new index.
     pub fn new() -> Self {
         Self {
             packages: Map::default(),
@@ -65,7 +64,6 @@ impl DebianIndex {
         }
     }
 
-    /// List existing versions for a given package with newest versions first.
     pub fn available_versions(&self, package: &PackageName) -> Vec<DebianVersion> {
         self.packages
             .get(package)
@@ -76,7 +74,6 @@ impl DebianIndex {
             .collect()
     }
 
-    /// Register a package and its mandatory dependencies in the index.
     pub fn add_deps(&mut self, name: &str, version: DebianVersion, dependencies: Vec<Dependency>) {
         self.packages
             .entry(name.to_string())

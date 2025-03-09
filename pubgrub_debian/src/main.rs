@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         DebianPackage::from_str("openssh-server").unwrap(),
         "1:7.9p1-10+deb10u2".parse::<DebianVersion>().unwrap(),
         "pubgrub_debian/repositories/buster/Packages",
-    );
+    )?;
     Ok(())
 }
 

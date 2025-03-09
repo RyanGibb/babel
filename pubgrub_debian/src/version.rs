@@ -5,48 +5,39 @@ use std::str::FromStr;
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct DebianVersion(pub String);
 
-impl DebianVersion {
-    /// Splits the version string into (epoch, upstream, debian_revision).
-    /// If the epoch is absent, it defaults to 0.
-    /// If the debian_revision is absent, it defaults to "0".
-    fn split(&self) -> (u64, String, String) {
-        // Trim whitespace.
-        let s = self.0.trim();
-        // Check for an epoch: look for ':'.
-        let (epoch, rest) = if let Some(pos) = s.find(':') {
-            let epoch_str = &s[..pos];
-            let epoch = epoch_str.parse::<u64>().unwrap_or(0);
-            (epoch, &s[pos + 1..])
-        } else {
-            (0, s)
-        };
-        // For debian_revision, split at the *last* hyphen.
-        let (upstream, debian) = if let Some(pos) = rest.rfind('-') {
-            let upstream = &rest[..pos];
-            let debian = &rest[pos + 1..];
-            (upstream, debian)
-        } else {
-            (rest, "0")
-        };
-        (epoch, upstream.to_string(), debian.to_string())
-    }
-
-    /// Tokenizes a version component (either upstream or debian) into alternating
-    /// non-digit and digit tokens.
-    fn tokenize_str(s: &str) -> Vec<Token> {
-        tokenize(s)
-    }
-}
-
-/// A token is either a numeric token or a non-numeric string token.
 #[derive(Debug, PartialEq, Eq)]
 enum Token {
     Num(u64),
     Str(String),
 }
 
-/// Tokenize a version string into alternating non-digit and digit tokens.
-/// Always starts with a non-digit token (insert an empty token if needed).
+/// Splits the version string into (epoch, upstream, debian_revision).
+/// If the epoch is absent, it defaults to 0.
+/// If the debian_revision is absent, it defaults to "0".
+fn split(version: &DebianVersion) -> (u64, &str, &str) {
+    // Trim whitespace.
+    let s = version.0.trim();
+    // Check for an epoch: look for ':'.
+    let (epoch, rest) = if let Some(pos) = s.find(':') {
+        let epoch_str = &s[..pos];
+        let epoch = epoch_str.parse::<u64>().unwrap_or(0);
+        (epoch, &s[pos + 1..])
+    } else {
+        (0, s)
+    };
+    // For debian_revision, split at the *last* hyphen.
+    let (upstream, debian) = if let Some(pos) = rest.rfind('-') {
+        let upstream = &rest[..pos];
+        let debian = &rest[pos + 1..];
+        (upstream, debian)
+    } else {
+        (rest, "0")
+    };
+    (epoch, upstream, debian)
+}
+
+/// Tokenizes a version component (either upstream or debian) into alternating
+/// non-digit and digit tokens.
 fn tokenize(version: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
     let mut current = String::new();
@@ -54,7 +45,7 @@ fn tokenize(version: &str) -> Vec<Token> {
 
     let mut chars = version.chars().peekable();
 
-    // According to Debian, if the first character is a digit, insert an empty string token.
+    // if the first character is a digit, insert an empty string token.
     if let Some(&ch) = chars.peek() {
         if ch.is_ascii_digit() {
             tokens.push(Token::Str(String::new()));
@@ -65,11 +56,13 @@ fn tokenize(version: &str) -> Vec<Token> {
         let ch_is_digit = ch.is_ascii_digit();
         match is_digit {
             Some(current_is_digit) if current_is_digit == ch_is_digit => {
+                // Same type of token, so add the character.
                 current.push(ch);
             }
             Some(_) => {
                 // Type changed: push the current token and start a new one.
                 if is_digit.unwrap() {
+                    // Numeric token – parse it (ignoring leading zeros)
                     let num = current.parse::<u64>().unwrap_or(0);
                     tokens.push(Token::Num(num));
                 } else {
@@ -98,18 +91,22 @@ fn tokenize(version: &str) -> Vec<Token> {
     tokens
 }
 
-/// Compare two non-digit tokens (strings) according to Debian rules:
+/// Compare two non-numeric tokens according to Debian’s rules:
 /// - Compare character by character.
-/// - Letters sort before non-letters.
-/// - The tilde `~` sorts before anything (even an empty string).
+/// - Letters are always considered lower than non-letters.
+/// - The tilde character (`~`) sorts even before the end of a token.
 fn compare_str_token(a: &str, b: &str) -> Ordering {
     let mut it1 = a.chars();
     let mut it2 = b.chars();
+
     loop {
         match (it1.next(), it2.next()) {
             (None, None) => return Ordering::Equal,
+            // When one string ends, we normally return Less or Greater.
+            // However, in Debian version ordering an empty string is considered to sort
+            // AFTER any string that starts with '~'. (This is what makes "1.0~beta" sort
+            // before "1.0".)
             (None, Some(c2)) => {
-                // When one string is finished, an empty string is considered to be after any token that begins with '~'
                 if c2 == '~' {
                     return Ordering::Greater;
                 } else {
@@ -127,18 +124,17 @@ fn compare_str_token(a: &str, b: &str) -> Ordering {
                 if c1 == c2 {
                     continue;
                 }
-                // If either character is '~', handle specially.
+                // Special handling for '~'
                 if c1 == '~' || c2 == '~' {
                     if c1 == '~' && c2 == '~' {
                         continue;
-                    }
-                    return if c1 == '~' {
-                        Ordering::Less
+                    } else if c1 == '~' {
+                        return Ordering::Less;
                     } else {
-                        Ordering::Greater
-                    };
+                        return Ordering::Greater;
+                    }
                 }
-                // Letters always sort before non-letters.
+                // Letters are considered lower than non-letters.
                 let is_letter1 = c1.is_alphabetic();
                 let is_letter2 = c2.is_alphabetic();
                 if is_letter1 != is_letter2 {
@@ -148,6 +144,7 @@ fn compare_str_token(a: &str, b: &str) -> Ordering {
                         Ordering::Greater
                     };
                 }
+                // Fallback: compare by ASCII value.
                 return c1.cmp(&c2);
             }
         }
@@ -159,97 +156,74 @@ fn compare_tokens(a: &Token, b: &Token) -> Ordering {
     match (a, b) {
         (Token::Num(n1), Token::Num(n2)) => n1.cmp(n2),
         (Token::Str(s1), Token::Str(s2)) => compare_str_token(s1, s2),
+        // In practice, token types should alternate.
         (Token::Num(_), Token::Str(_)) => Ordering::Greater,
         (Token::Str(_), Token::Num(_)) => Ordering::Less,
     }
 }
 
+fn compare_token_vecs(tokens1: &Vec<Token>, tokens2: &Vec<Token>) -> Option<Ordering> {
+    let max = tokens1.len().max(tokens2.len());
+    for i in 0..max {
+        let token1 = tokens1.get(i);
+        let token2 = tokens2.get(i);
+        let ord = match (token1, token2) {
+            (Some(t1), Some(t2)) => compare_tokens(t1, t2),
+            (None, Some(t2)) => {
+                if let Token::Str(s2) = t2 {
+                    if s2.starts_with('~') {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Less
+                    }
+                } else {
+                    Ordering::Less
+                }
+            }
+            (Some(t1), None) => {
+                if let Token::Str(s1) = t1 {
+                    if s1.starts_with('~') {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    }
+                } else {
+                    Ordering::Greater
+                }
+            }
+            (None, None) => Ordering::Equal,
+        };
+        if ord != Ordering::Equal {
+            return Some(ord);
+        }
+    }
+    return None;
+}
+
 impl Ord for DebianVersion {
     fn cmp(&self, other: &Self) -> Ordering {
-        let (epoch1, upstream1, debian1) = self.split();
-        let (epoch2, upstream2, debian2) = other.split();
+        let (epoch1, upstream1, debian1) = split(self);
+        let (epoch2, upstream2, debian2) = split(other);
 
-        // First compare epochs numerically.
         match epoch1.cmp(&epoch2) {
             Ordering::Equal => {}
             non_eq => return non_eq,
         }
 
-        // Compare upstream_version using tokenization.
-        let tokens1 = DebianVersion::tokenize_str(&upstream1);
-        let tokens2 = DebianVersion::tokenize_str(&upstream2);
-        let max = tokens1.len().max(tokens2.len());
-        for i in 0..max {
-            let token1 = tokens1.get(i);
-            let token2 = tokens2.get(i);
-            let ord = match (token1, token2) {
-                (Some(t1), Some(t2)) => compare_tokens(t1, t2),
-                (None, Some(t2)) => {
-                    if let Token::Str(s2) = t2 {
-                        if s2.starts_with('~') {
-                            Ordering::Greater
-                        } else {
-                            Ordering::Less
-                        }
-                    } else {
-                        Ordering::Less
-                    }
-                }
-                (Some(t1), None) => {
-                    if let Token::Str(s1) = t1 {
-                        if s1.starts_with('~') {
-                            Ordering::Less
-                        } else {
-                            Ordering::Greater
-                        }
-                    } else {
-                        Ordering::Greater
-                    }
-                }
-                (None, None) => Ordering::Equal,
-            };
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
+        let tokens1 = tokenize(&upstream1);
+        let tokens2 = tokenize(&upstream2);
+        match compare_token_vecs(&tokens1, &tokens2) {
+            None => {}
+            Some(o) => return o,
+        };
 
-        // Compare debian_revision similarly.
-        let tokens1 = DebianVersion::tokenize_str(&debian1);
-        let tokens2 = DebianVersion::tokenize_str(&debian2);
-        let max = tokens1.len().max(tokens2.len());
-        for i in 0..max {
-            let token1 = tokens1.get(i);
-            let token2 = tokens2.get(i);
-            let ord = match (token1, token2) {
-                (Some(t1), Some(t2)) => compare_tokens(t1, t2),
-                (None, Some(t2)) => {
-                    if let Token::Str(s2) = t2 {
-                        if s2.starts_with('~') {
-                            Ordering::Greater
-                        } else {
-                            Ordering::Less
-                        }
-                    } else {
-                        Ordering::Less
-                    }
-                }
-                (Some(t1), None) => {
-                    if let Token::Str(s1) = t1 {
-                        if s1.starts_with('~') {
-                            Ordering::Less
-                        } else {
-                            Ordering::Greater
-                        }
-                    } else {
-                        Ordering::Greater
-                    }
-                }
-                (None, None) => Ordering::Equal,
-            };
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
+        let tokens1 = tokenize(&debian1);
+        let tokens2 = tokenize(&debian2);
+        match compare_token_vecs(&tokens1, &tokens2) {
+            None => {}
+            Some(o) => return o,
+        };
+
         Ordering::Equal
     }
 }
@@ -279,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_starts_with_digit() {
-        let tokens = DebianVersion::tokenize_str("1.2");
+        let tokens = tokenize("1.2");
         // Expected tokens: [Token::Str(""), Token::Num(1), Token::Str("."), Token::Num(2)]
         assert_eq!(tokens.len(), 4);
 
@@ -303,9 +277,6 @@ mod tests {
 
     #[test]
     fn test_ordering() {
-        // Example ordering from the documentation:
-        // "~~", "~", "~beta2", "~beta10", "0.1", "1.0~beta", "1.0", "1.0-test",
-        // "1.0.1", "1.0.10", "dev", "trunk"
         let mut versions = vec![
             DebianVersion("1.0-test".to_string()),
             DebianVersion("1.0.10".to_string()),
@@ -334,13 +305,5 @@ mod tests {
         let sorted_versions = versions.iter().map(|v| v.to_string()).collect::<Vec<_>>();
 
         assert_eq!(sorted_versions, expected_order);
-    }
-
-    #[test]
-    fn test_comparison_specific() {
-        let v1 = DebianVersion("1.0~beta".to_string());
-        let v2 = DebianVersion("1.0".to_string());
-        // We expect "1.0~beta" to be less than "1.0"
-        assert!(v1 < v2, "Expected '1.0~beta' to be less than '1.0'");
     }
 }

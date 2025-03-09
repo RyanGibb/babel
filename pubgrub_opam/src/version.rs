@@ -5,16 +5,6 @@ use std::str::FromStr;
 #[derive(Clone, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub struct OpamVersion(pub String);
 
-impl OpamVersion {
-    /// Split the version string into tokens.
-    /// The algorithm splits into alternating non-digit and digit tokens,
-    /// always starting with a non-digit token (inserting an empty token if needed).
-    fn tokenize(&self) -> Vec<Token> {
-        tokenize(&self.0)
-    }
-}
-
-/// A token is either a numeric token or a non-numeric string token.
 #[derive(Debug, PartialEq, Eq)]
 enum Token {
     Num(u64),
@@ -29,7 +19,7 @@ fn tokenize(version: &str) -> Vec<Token> {
 
     let mut chars = version.chars().peekable();
 
-    // Debian/Opam rules say the token list always starts with a non-digit token.
+    // if the first character is a digit, insert an empty string token.
     if let Some(&ch) = chars.peek() {
         if ch.is_ascii_digit() {
             tokens.push(Token::Str(String::new()));
@@ -148,8 +138,8 @@ fn compare_tokens(a: &Token, b: &Token) -> Ordering {
 
 impl Ord for OpamVersion {
     fn cmp(&self, other: &Self) -> Ordering {
-        let tokens1 = self.tokenize();
-        let tokens2 = other.tokenize();
+        let tokens1 = tokenize(&self.0);
+        let tokens2 = tokenize(&other.0);
         let max = tokens1.len().max(tokens2.len());
 
         for i in 0..max {
@@ -157,11 +147,8 @@ impl Ord for OpamVersion {
             let token2 = tokens2.get(i);
             let ord = match (token1, token2) {
                 (Some(t1), Some(t2)) => compare_tokens(t1, t2),
-                // When self runs out of tokens, treat it as an empty string.
                 (None, Some(t2)) => {
-                    // Compare an empty string with t2.
                     if let Token::Str(s2) = t2 {
-                        // An empty string is considered greater than any string that starts with '~'
                         if s2.starts_with('~') {
                             Ordering::Greater
                         } else {
@@ -171,7 +158,6 @@ impl Ord for OpamVersion {
                         Ordering::Less
                     }
                 }
-                // When other runs out of tokens.
                 (Some(t1), None) => {
                     if let Token::Str(s1) = t1 {
                         if s1.starts_with('~') {
@@ -218,8 +204,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_starts_with_digit() {
-        let version = OpamVersion("1.2".to_string());
-        let tokens = version.tokenize();
+        let tokens = tokenize("1.2");
         // Expected tokens: [Token::Str(""), Token::Num(1), Token::Str("."), Token::Num(2)]
         assert_eq!(tokens.len(), 4);
 
@@ -274,13 +259,5 @@ mod tests {
         let sorted_versions = versions.iter().map(|v| v.to_string()).collect::<Vec<_>>();
 
         assert_eq!(sorted_versions, expected_order);
-    }
-
-    #[test]
-    fn test_comparison_specific() {
-        let v1 = OpamVersion("1.0~beta".to_string());
-        let v2 = OpamVersion("1.0".to_string());
-        // We expect "1.0~beta" to be less than "1.0"
-        assert!(v1 < v2, "Expected '1.0~beta' to be less than '1.0'");
     }
 }

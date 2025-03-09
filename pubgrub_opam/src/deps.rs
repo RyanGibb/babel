@@ -95,7 +95,7 @@ impl OpamIndex {
                     OpamVersion("freebsd".to_string()),
                     OpamVersion("openbsd".to_string()),
                     OpamVersion("netbsd".to_string()),
-                    OpamVersion("dragonfly".to_string())
+                    OpamVersion("dragonfly".to_string()),
                 ],
                 "arch" => vec![
                     OpamVersion("arm64".to_string()),

@@ -7,7 +7,7 @@ use std::str::FromStr;
 use pubgrub::Range;
 
 use crate::index;
-use crate::index::{HashedRange, DebianIndex};
+use crate::index::{DebianIndex, HashedRange};
 use crate::version::DebianVersion;
 
 #[derive(Debug, Clone, PartialEq)]

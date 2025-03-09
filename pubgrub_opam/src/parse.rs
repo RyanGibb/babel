@@ -28,9 +28,9 @@ pub enum DependsField {
 
 #[derive(Debug, Deserialize)]
 pub struct DepextField {
-  #[serde(rename = "val")]
-  names: Vec<String>,
-  conditions: Vec<FilterExpr>,
+    #[serde(rename = "val")]
+    names: Vec<String>,
+    conditions: Vec<FilterExpr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

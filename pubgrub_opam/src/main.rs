@@ -160,7 +160,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         OpamPackage::from_str("A").unwrap(),
         "1.0.0".parse::<OpamVersion>().unwrap(),
         "pubgrub_opam/example-repo/packages",
-    );
+    )?;
     Ok(())
 }
 

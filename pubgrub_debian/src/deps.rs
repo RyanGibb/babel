@@ -1,5 +1,5 @@
+use crate::index::{DebianIndex, Dependency};
 use crate::version::DebianVersion;
-use crate::index::{Dependency, DebianIndex};
 use core::fmt::Display;
 use pubgrub::{Dependencies, DependencyConstraints, DependencyProvider, Map, Range};
 use std::convert::Infallible;
@@ -34,7 +34,10 @@ impl Display for DebianPackage {
 }
 
 impl DebianIndex {
-    pub fn list_versions(&self, package: &DebianPackage) -> impl Iterator<Item = DebianVersion> + '_ {
+    pub fn list_versions(
+        &self,
+        package: &DebianPackage,
+    ) -> impl Iterator<Item = DebianVersion> + '_ {
         let versions = match package {
             DebianPackage::Root(_) => vec![DebianVersion("".to_string())],
             DebianPackage::Base(pkg) => self.available_versions(pkg),
@@ -103,7 +106,9 @@ impl DependencyProvider for DebianIndex {
         version: &DebianVersion,
     ) -> Result<Dependencies<Self::P, Self::VS, Self::M>, Self::Err> {
         match package {
-            DebianPackage::Root(deps) => Ok(Dependencies::Available(deps.into_iter().cloned().collect())),
+            DebianPackage::Root(deps) => {
+                Ok(Dependencies::Available(deps.into_iter().cloned().collect()))
+            }
             DebianPackage::Base(pkg) => {
                 let all_versions = match self.packages.get(pkg) {
                     None => return Ok(Dependencies::Unavailable("".to_string())),

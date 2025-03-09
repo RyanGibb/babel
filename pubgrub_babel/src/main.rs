@@ -316,10 +316,7 @@ mod tests {
                 OpamPackage::Base("ocluster".to_string()),
                 Range::singleton(OpamVersion("0.3.0".to_string())),
             ),
-            (
-                OpamPackage::Base("opam-devel".to_string()),
-                Range::full(),
-            ),
+            (OpamPackage::Base("opam-devel".to_string()), Range::full()),
             (
                 OpamPackage::Var("os-family".to_string()),
                 Range::singleton(OpamVersion("debian".to_string())),
