@@ -2,6 +2,7 @@ use pubgrub::{
     DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter,
     SelectedDependencies,
 };
+use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_babel::deps::BabelPackage;
 use pubgrub_babel::index::BabelIndex;
 use pubgrub_babel::version::BabelVersion;
@@ -18,10 +19,12 @@ fn solve_repo(
     version: BabelVersion,
     opam_repo: &str,
     debian_repo: &str,
+    alpine_repo: &str,
 ) -> Result<SelectedDependencies<BabelIndex>, Box<dyn Error>> {
     let opam_index = OpamIndex::new(opam_repo.to_string());
     let debian_index = pubgrub_debian::parse::create_index(debian_repo.to_string())?;
-    let index = BabelIndex::new(opam_index, debian_index);
+    let alpine_index = pubgrub_alpine::parse::create_index(alpine_repo.to_string())?;
+    let index = BabelIndex::new(opam_index, debian_index, alpine_index);
     index.opam.set_debug(true);
     index.debian.set_debug(true);
 
@@ -51,10 +54,18 @@ fn solve_repo(
                 for (dep_package, _dep_versions) in constraints {
                     let solved_version = sol.get(&dep_package).unwrap();
                     match dep_package.clone() {
+                        BabelPackage::Root(_deps) => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
+                        }
                         BabelPackage::Opam(pkg) => {
                             match pkg {
                                 OpamPackage::Base(name) => {
-                                    dependents.insert((name, solved_version));
+                                    dependents.insert((format!("Opam {}", name), solved_version));
                                 }
                                 OpamPackage::Lor { lhs: _, rhs: _ } => {
                                     dependents.extend(get_resolved_deps(
@@ -81,7 +92,8 @@ fn solve_repo(
                                     ));
                                 }
                                 OpamPackage::Var(_) => {
-                                    dependents.insert((format!("{}", dep_package), solved_version));
+                                    dependents
+                                        .insert((format!("Opam {}", dep_package), solved_version));
                                 }
                                 OpamPackage::Root(_deps) => {
                                     dependents.extend(get_resolved_deps(
@@ -112,7 +124,7 @@ fn solve_repo(
                         BabelPackage::Debian(pkg) => {
                             match pkg {
                                 DebianPackage::Base(name) => {
-                                    dependents.insert((name, solved_version));
+                                    dependents.insert((format!("Debian {}", name), solved_version));
                                 }
                                 DebianPackage::Proxy(_) => {
                                     dependents.extend(get_resolved_deps(
@@ -123,6 +135,21 @@ fn solve_repo(
                                     ));
                                 }
                                 DebianPackage::Root(_deps) => {
+                                    dependents.extend(get_resolved_deps(
+                                        &index,
+                                        sol,
+                                        &dep_package,
+                                        solved_version,
+                                    ));
+                                }
+                            };
+                        }
+                        BabelPackage::Alpine(pkg) => {
+                            match pkg {
+                                AlpinePackage::Base(name) => {
+                                    dependents.insert((format!("Alpine {}", name), solved_version));
+                                }
+                                AlpinePackage::Root(_deps) => {
                                     dependents.extend(get_resolved_deps(
                                         &index,
                                         sol,
@@ -161,20 +188,32 @@ fn solve_repo(
                 }
                 _ => (),
             },
+            BabelPackage::Alpine(pkg) => match pkg {
+                AlpinePackage::Base(name) => {
+                    println!("\tAlpine\t({}, {})", name, version);
+                }
+                _ => (),
+            },
+            _ => (),
         }
     }
 
     let mut resolved_graph: BTreeMap<(String, &BabelVersion), Vec<(String, &BabelVersion)>> =
         BTreeMap::new();
     for (package, version) in &sol {
+        let mut deps = get_resolved_deps(&index, &sol, &package, version)
+            .into_iter()
+            .collect::<Vec<_>>();
+        deps.sort_by(|(p1, _v1), (p2, _v2)| p1.cmp(p2));
         match package {
-            BabelPackage::Opam(OpamPackage::Base(name))
-            | BabelPackage::Debian(DebianPackage::Base(name)) => {
-                let mut deps = get_resolved_deps(&index, &sol, &package, version)
-                    .into_iter()
-                    .collect::<Vec<_>>();
-                deps.sort_by(|(p1, _v1), (p2, _v2)| p1.cmp(p2));
-                resolved_graph.insert((name.clone(), version), deps);
+            BabelPackage::Opam(OpamPackage::Base(name)) => {
+                resolved_graph.insert((format!("Opam {}", name), version), deps);
+            }
+            BabelPackage::Debian(DebianPackage::Base(name)) => {
+                resolved_graph.insert((format!("Debian {}", name).clone(), version), deps);
+            }
+            BabelPackage::Alpine(AlpinePackage::Base(name)) => {
+                resolved_graph.insert((format!("Alpine {}", name).clone(), version), deps);
             }
             _ => {}
         }
@@ -206,6 +245,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         BabelVersion::Opam("1.0.0".parse::<OpamVersion>().unwrap()),
         "pubgrub_opam/example-repo/packages",
         "pubgrub_debian/repositories/buster/Packages",
+        "pubgrub_alpine/repositories/3.20/APKINDEX",
     )?;
     Ok(())
 }
@@ -225,6 +265,7 @@ mod tests {
             BabelVersion::Opam(OpamVersion("3.17.2".to_string())),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
         )?;
         Ok(())
     }
@@ -254,6 +295,7 @@ mod tests {
             BabelVersion::Opam(OpamVersion("".to_string())),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
         )?;
         Ok(())
     }
@@ -265,6 +307,7 @@ mod tests {
             BabelVersion::Debian(DebianVersion("1:7.9p1-10+deb10u2".to_string())),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
         )?;
         Ok(())
     }
@@ -280,6 +323,7 @@ mod tests {
             BabelVersion::Debian(DebianVersion("".to_string())),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
         )?;
         Ok(())
     }
@@ -305,32 +349,89 @@ mod tests {
             BabelVersion::Opam(OpamVersion("".to_string())),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
         )?;
         Ok(())
     }
 
     #[test]
-    fn test_ocluster() -> Result<(), Box<dyn Error>> {
-        let root = OpamPackage::Root(vec![
+    fn test_ocluster_debian() -> Result<(), Box<dyn Error>> {
+        let root = BabelPackage::Root(vec![
             (
-                OpamPackage::Base("ocluster".to_string()),
-                Range::singleton(OpamVersion("0.3.0".to_string())),
-            ),
-            (OpamPackage::Base("opam-devel".to_string()), Range::full()),
-            (
-                OpamPackage::Var("os-family".to_string()),
-                Range::singleton(OpamVersion("debian".to_string())),
+                BabelPackage::Opam(OpamPackage::Base("ocluster".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("0.3.0".to_string()))),
             ),
             (
-                OpamPackage::Var("os-distribution".to_string()),
-                Range::singleton(OpamVersion("debian".to_string())),
+                BabelPackage::Opam(OpamPackage::Base("opam-devel".to_string())),
+                Range::full(),
+            ),
+            (
+                BabelPackage::Opam(OpamPackage::Var("os-family".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("debian".to_string()))),
+            ),
+            (
+                BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("debian".to_string()))),
             ),
         ]);
         solve_repo(
-            BabelPackage::Opam(root),
-            BabelVersion::Opam(OpamVersion("".to_string())),
+            root,
+            BabelVersion::Singular,
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_ocluster_alpine() -> Result<(), Box<dyn Error>> {
+        let root = BabelPackage::Root(vec![
+            (
+                BabelPackage::Opam(OpamPackage::Base("ocluster".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("0.3.0".to_string()))),
+            ),
+            (
+                BabelPackage::Opam(OpamPackage::Base("opam-devel".to_string())),
+                Range::full(),
+            ),
+            (
+                BabelPackage::Opam(OpamPackage::Var("os-family".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("alpine".to_string()))),
+            ),
+            (
+                BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("alpine".to_string()))),
+            ),
+        ]);
+        solve_repo(
+            root,
+            BabelVersion::Singular,
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_ocluster_select_os() -> Result<(), Box<dyn Error>> {
+        let root = BabelPackage::Root(vec![
+            (
+                BabelPackage::Opam(OpamPackage::Base("ocluster".to_string())),
+                Range::singleton(BabelVersion::Opam(OpamVersion("0.3.0".to_string()))),
+            ),
+            (
+                BabelPackage::Opam(OpamPackage::Base("opam-devel".to_string())),
+                Range::full(),
+            ),
+        ]);
+        solve_repo(
+            root,
+            BabelVersion::Singular,
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
         )?;
         Ok(())
     }

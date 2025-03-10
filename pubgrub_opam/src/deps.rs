@@ -29,7 +29,7 @@ pub enum OpamPackage {
     Var(String),
 }
 
-static VARIABLE_CACHE: LazyLock<Mutex<HashMap<String, HashSet<OpamVersion>>>> =
+pub static VARIABLE_CACHE: LazyLock<Mutex<HashMap<String, HashSet<OpamVersion>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static CONFLICT_CLASS_CACHE: LazyLock<Mutex<HashMap<String, HashSet<OpamVersion>>>> =

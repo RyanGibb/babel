@@ -3,5 +3,6 @@ members = [
     "pubgrub_babel",
     "pubgrub_debian",
     "pubgrub_opam",
+    "pubgrub_alpine",
 ]
 resolver = "2"

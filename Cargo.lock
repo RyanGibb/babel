@@ -98,10 +98,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pubgrub_alpine"
+version = "0.1.0"
+dependencies = [
+ "pubgrub",
+ "rustc-hash 1.1.0",
+]
+
+[[package]]
 name = "pubgrub_babel"
 version = "0.1.0"
 dependencies = [
  "pubgrub",
+ "pubgrub_alpine",
  "pubgrub_debian",
  "pubgrub_opam",
 ]

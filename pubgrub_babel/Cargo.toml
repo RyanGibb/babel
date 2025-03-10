@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+pubgrub_alpine = { path = "../pubgrub_alpine" }
 pubgrub_debian = { path = "../pubgrub_debian" }
 pubgrub_opam = { path = "../pubgrub_opam" }
 pubgrub = "0.3.0"
