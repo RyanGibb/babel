@@ -147,7 +147,17 @@ fn solve_repo(
                         BabelPackage::Alpine(pkg) => {
                             match pkg {
                                 AlpinePackage::Base(name) => {
-                                    dependents.insert((format!("Alpine {}", name), solved_version));
+                                    if ! (name.starts_with("so:") && index.list_versions(&dep_package).count() == 1) {
+                                        dependents
+                                            .insert((format!("Alpine {}", name), solved_version));
+                                    } else {
+                                        dependents.extend(get_resolved_deps(
+                                            &index,
+                                            sol,
+                                            &dep_package,
+                                            solved_version,
+                                        ));
+                                    }
                                 }
                                 AlpinePackage::Root(_deps) => {
                                     dependents.extend(get_resolved_deps(
@@ -190,7 +200,9 @@ fn solve_repo(
             },
             BabelPackage::Alpine(pkg) => match pkg {
                 AlpinePackage::Base(name) => {
-                    println!("\tAlpine\t({}, {})", name, version);
+                    if ! (name.starts_with("so:") && index.list_versions(&package).count() == 1) {
+                        println!("\tAlpine\t({}, {})", name, version);
+                    }
                 }
                 _ => (),
             },
@@ -213,7 +225,9 @@ fn solve_repo(
                 resolved_graph.insert((format!("Debian {}", name).clone(), version), deps);
             }
             BabelPackage::Alpine(AlpinePackage::Base(name)) => {
-                resolved_graph.insert((format!("Alpine {}", name).clone(), version), deps);
+                if ! (name.starts_with("so:") && index.list_versions(&package).count() == 1) {
+                    resolved_graph.insert((format!("Alpine {}", name).clone(), version), deps);
+                }
             }
             _ => {}
         }
@@ -329,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn test_conf_gmp_variables() -> Result<(), Box<dyn Error>> {
+    fn test_conf_gmp_debian() -> Result<(), Box<dyn Error>> {
         let root = OpamPackage::Root(vec![
             (
                 OpamPackage::Base("conf-gmp".to_string()),
@@ -342,6 +356,32 @@ mod tests {
             (
                 OpamPackage::Var("os-distribution".to_string()),
                 Range::singleton(OpamVersion("debian".to_string())),
+            ),
+        ]);
+        solve_repo(
+            BabelPackage::Opam(root),
+            BabelVersion::Opam(OpamVersion("".to_string())),
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_conf_gmp_alpine() -> Result<(), Box<dyn Error>> {
+        let root = OpamPackage::Root(vec![
+            (
+                OpamPackage::Base("conf-gmp".to_string()),
+                Range::singleton(OpamVersion("4".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-family".to_string()),
+                Range::singleton(OpamVersion("alpine".to_string())),
+            ),
+            (
+                OpamPackage::Var("os-distribution".to_string()),
+                Range::singleton(OpamVersion("alpine".to_string())),
             ),
         ]);
         solve_repo(
