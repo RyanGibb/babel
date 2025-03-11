@@ -3,7 +3,7 @@ use pubgrub::{
     SelectedDependencies,
 };
 use pubgrub_alpine::deps::AlpinePackage;
-use pubgrub_babel::deps::BabelPackage;
+use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
 use pubgrub_babel::index::BabelIndex;
 use pubgrub_babel::version::BabelVersion;
 use pubgrub_debian::deps::DebianPackage;
@@ -25,9 +25,8 @@ fn solve_repo(
     let debian_index = pubgrub_debian::parse::create_index(debian_repo.to_string())?;
     let alpine_index = pubgrub_alpine::parse::create_index(alpine_repo.to_string())?;
     let index = BabelIndex::new(opam_index, debian_index, alpine_index);
-    index.opam.set_debug(true);
-    index.debian.set_debug(true);
-
+    index.set_debug(true);
+    index.set_version_debug(true);
     let sol: SelectedDependencies<BabelIndex> = match pubgrub::resolve(&index, pkg, version) {
         Ok(sol) => Ok(sol),
         Err(PubGrubError::NoSolution(mut derivation_tree)) => {
@@ -38,8 +37,8 @@ fn solve_repo(
         Err(err) => panic!("{:?}", err),
     }?;
 
-    index.opam.set_debug(false);
-    index.debian.set_debug(false);
+    index.set_debug(false);
+    index.set_version_debug(false);
 
     fn get_resolved_deps<'a>(
         index: &'a BabelIndex,
@@ -55,6 +54,14 @@ fn solve_repo(
                     let solved_version = sol.get(&dep_package).unwrap();
                     match dep_package.clone() {
                         BabelPackage::Root(_deps) => {
+                            dependents.extend(get_resolved_deps(
+                                &index,
+                                sol,
+                                &dep_package,
+                                solved_version,
+                            ));
+                        }
+                        BabelPackage::Platform(_deps) => {
                             dependents.extend(get_resolved_deps(
                                 &index,
                                 sol,
@@ -93,7 +100,7 @@ fn solve_repo(
                                 }
                                 OpamPackage::Var(_) => {
                                     dependents
-                                        .insert((format!("Opam {}", dep_package), solved_version));
+                                        .insert((format!("Opam {}", pkg), solved_version));
                                 }
                                 OpamPackage::Root(_deps) => {
                                     dependents.extend(get_resolved_deps(
@@ -103,7 +110,7 @@ fn solve_repo(
                                         solved_version,
                                     ));
                                 }
-                                OpamPackage::Depext(_deps) => {
+                                OpamPackage::Depext { .. } => {
                                     dependents.extend(get_resolved_deps(
                                         &index,
                                         sol,
@@ -183,6 +190,9 @@ fn solve_repo(
     println!("\nSolution Set:");
     for (package, version) in &sol {
         match package {
+            BabelPackage::Platform(PlatformPackage::OS) => {
+                println!("\t(OS, {})", version);
+            },
             BabelPackage::Opam(pkg) => match pkg {
                 OpamPackage::Base(name) => {
                     println!("\tOpam\t({}, {})", name, version);

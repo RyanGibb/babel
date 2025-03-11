@@ -80,7 +80,7 @@ fn solve_repo(
                                 solved_version,
                             ));
                         }
-                        OpamPackage::Depext(_deps) => {
+                        OpamPackage::Depext { .. } => {
                             dependents.extend(get_resolved_deps(
                                 &index,
                                 sol,

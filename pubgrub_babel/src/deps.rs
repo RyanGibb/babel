@@ -2,14 +2,11 @@ use crate::index::BabelIndex;
 use crate::version::BabelVersion;
 use core::fmt::Display;
 use pubgrub::{Dependencies, DependencyProvider, Map, Range};
-use std::{collections::HashSet, convert::Infallible};
+use std::convert::Infallible;
 
 use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_debian::deps::DebianPackage;
-use pubgrub_opam::{
-    deps::{OpamPackage, VARIABLE_CACHE},
-    version::OpamVersion,
-};
+use pubgrub_opam::{deps::OpamPackage, version::OpamVersion};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum BabelPackage {
@@ -17,12 +14,20 @@ pub enum BabelPackage {
     Opam(OpamPackage),
     Debian(DebianPackage),
     Alpine(AlpinePackage),
+    Platform(PlatformPackage),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum PlatformPackage {
+    OS,
+    // Architecture,
 }
 
 impl Display for BabelPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BabelPackage::Root(_) => write!(f, "Root"),
+            BabelPackage::Platform(PlatformPackage::OS) => write!(f, "Platform OS"),
             BabelPackage::Opam(pkg) => write!(f, "Opam {}", pkg),
             BabelPackage::Debian(pkg) => write!(f, "Debian {}", pkg),
             BabelPackage::Alpine(pkg) => write!(f, "Alpine {}", pkg),
@@ -30,11 +35,46 @@ impl Display for BabelPackage {
     }
 }
 
+/// Checks if a version formula contains a condition for a specific OS
+/// Either as os-distribution = "os_name" or os-family = "os_name"
+fn contains_os_condition(formula: &pubgrub_opam::index::VersionFormula, os_name: &str) -> bool {
+    use pubgrub_opam::index::VersionFormula;
+    use pubgrub_opam::parse::RelOp;
+    match formula {
+        VersionFormula::Comparator { relop, binary } if *relop == RelOp::Eq => {
+            if let VersionFormula::Variable(var_name) = &*binary.lhs {
+                if var_name == "os-distribution" || var_name == "os-family" {
+                    if let VersionFormula::Lit(version) = &*binary.rhs {
+                        return version.0 == os_name;
+                    }
+                }
+            }
+            if let VersionFormula::Variable(var_name) = &*binary.rhs {
+                if var_name == "os-distribution" || var_name == "os-family" {
+                    if let VersionFormula::Lit(version) = &*binary.lhs {
+                        return version.0 == os_name;
+                    }
+                }
+            }
+            false
+        }
+        VersionFormula::And(binary) => {
+            contains_os_condition(&binary.lhs, os_name)
+                || contains_os_condition(&binary.rhs, os_name)
+        }
+        VersionFormula::Or(binary) => {
+            contains_os_condition(&binary.lhs, os_name)
+                || contains_os_condition(&binary.rhs, os_name)
+        }
+        _ => false,
+    }
+}
+
 impl BabelIndex {
     pub fn list_versions(&self, package: &BabelPackage) -> impl Iterator<Item = BabelVersion> + '_ {
         let versions: Vec<_> = match package {
             BabelPackage::Root(_) => vec![BabelVersion::Singular],
-            BabelPackage::Opam(OpamPackage::Depext(_)) => {
+            BabelPackage::Opam(OpamPackage::Depext { .. }) => {
                 vec![
                     BabelVersion::Opam(OpamVersion("alpine".to_string())),
                     BabelVersion::Opam(OpamVersion("debian".to_string())),
@@ -55,7 +95,26 @@ impl BabelIndex {
                 .list_versions(pkg)
                 .map(|x| BabelVersion::Alpine(x))
                 .collect(),
+            BabelPackage::Platform(PlatformPackage::OS) => vec![
+                BabelVersion::Platform("debian".to_string()),
+                BabelVersion::Platform("alpine".to_string()),
+            ],
         };
+        if self.version_debug.get() {
+            print!("versions of {}", package);
+            if versions.len() > 0 {
+                print!(": ")
+            }
+            let mut first = true;
+            for version in versions.clone() {
+                if !first {
+                    print!(", ");
+                }
+                print!("{}", version);
+                first = false;
+            }
+            println!();
+        }
         versions.into_iter()
     }
 }
@@ -98,76 +157,89 @@ impl DependencyProvider for BabelIndex {
         package: &BabelPackage,
         version: &BabelVersion,
     ) -> Result<Dependencies<Self::P, Self::VS, Self::M>, Self::Err> {
-        match package {
+        let deps = match package {
             BabelPackage::Root(deps) => {
-                for (package, range) in deps {
-                    match package {
-                        BabelPackage::Opam(OpamPackage::Var(var)) => {
-                            // we reach in to populate Opam's variable cache
-                            if let Some(BabelVersion::Opam(ver)) = range.as_singleton() {
-                                VARIABLE_CACHE
-                                    .lock()
-                                    .unwrap()
-                                    .entry(var.to_string())
-                                    .or_insert_with(HashSet::new)
-                                    .insert(ver.clone());
-                            }
-                        }
-                        _ => {}
-                    }
-                }
                 Ok(Dependencies::Available(deps.into_iter().cloned().collect()))
+            }
+            BabelPackage::Platform(PlatformPackage::OS) => {
+                let mut map = Map::default();
+                match version {
+                    BabelVersion::Platform(ver) => match ver.as_str() {
+                        "debian" => {
+                            map.insert(
+                                BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),
+                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                    "debian".to_string(),
+                                ))),
+                            );
+                            map.insert(
+                                BabelPackage::Opam(OpamPackage::Var("os-family".to_string())),
+                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                    "debian".to_string(),
+                                ))),
+                            );
+                            map.insert(
+                                BabelPackage::Opam(OpamPackage::Var("os".to_string())),
+                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                    "linux".to_string(),
+                                ))),
+                            );
+                        }
+                        "alpine" => {
+                            map.insert(
+                                BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),
+                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                    "alpine".to_string(),
+                                ))),
+                            );
+                            map.insert(
+                                BabelPackage::Opam(OpamPackage::Var("os-family".to_string())),
+                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                    "alpine".to_string(),
+                                ))),
+                            );
+                            map.insert(
+                                BabelPackage::Opam(OpamPackage::Var("os".to_string())),
+                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                    "linux".to_string(),
+                                ))),
+                            );
+                        }
+                        _ => panic![],
+                    },
+                    _ => panic![],
+                }
+                Ok(Dependencies::Available(map))
             }
             BabelPackage::Opam(pkg) => {
                 if let BabelVersion::Opam(ver) = version {
                     let deps = match pkg {
-                        OpamPackage::Depext(depexts) => {
+                        OpamPackage::Depext { names, formula } => {
                             let mut map = Map::default();
-                            for depext in depexts {
-                                // TODO handle virtual packages
+                            for depext in names {
                                 let OpamVersion(v) = ver;
                                 match v.as_str() {
                                     "debian" => {
-                                        map.insert(
-                                            BabelPackage::Debian(DebianPackage::Base(
-                                                depext.to_string(),
-                                            )),
-                                            Range::<BabelVersion>::full(),
-                                        );
-                                        map.insert(
-                                            BabelPackage::Opam(OpamPackage::Var(
-                                                "os-distribution".to_string(),
-                                            )),
-                                            Range::singleton(BabelVersion::Opam(OpamVersion(
-                                                "debian".to_string(),
-                                            ))),
-                                        );
-                                        map.insert(
-                                            BabelPackage::Opam(OpamPackage::Var(
-                                                "os-family".to_string(),
-                                            )),
-                                            Range::singleton(BabelVersion::Opam(OpamVersion(
-                                                "debian".to_string(),
-                                            ))),
-                                        );
+                                        if contains_os_condition(formula, "debian") {
+                                            map.insert(
+                                                BabelPackage::Debian(DebianPackage::Base(
+                                                    depext.to_string(),
+                                                )),
+                                                Range::<BabelVersion>::full(),
+                                            );
+                                        }
                                     }
                                     "alpine" => {
-                                        map.insert(
-                                            BabelPackage::Alpine(AlpinePackage::Base(
-                                                depext.to_string(),
-                                            )),
-                                            Range::<BabelVersion>::full(),
-                                        );
-                                        map.insert(
-                                            BabelPackage::Opam(OpamPackage::Var(
-                                                "os-distribution".to_string(),
-                                            )),
-                                            Range::singleton(BabelVersion::Opam(OpamVersion(
-                                                "alpine".to_string(),
-                                            ))),
-                                        );
+                                        if contains_os_condition(formula, "alpine") {
+                                            map.insert(
+                                                BabelPackage::Alpine(AlpinePackage::Base(
+                                                    depext.to_string(),
+                                                )),
+                                                Range::<BabelVersion>::full(),
+                                            );
+                                        }
                                     }
-                                    _ => panic!(),
+                                    _ => {}
                                 }
                             }
                             Dependencies::Available(map)
@@ -255,6 +327,27 @@ impl DependencyProvider for BabelIndex {
                     panic!();
                 }
             }
+        };
+        if self.debug.get() {
+            match &deps {
+                Ok(Dependencies::Available(deps)) => {
+                    print!("({}, {})", package, version);
+                    if deps.len() > 0 {
+                        print!(" -> ")
+                    }
+                    let mut first = true;
+                    for (package, range) in deps.clone() {
+                        if !first {
+                            print!(", ");
+                        }
+                        print!("({}, {})", package, range);
+                        first = false;
+                    }
+                    println!();
+                }
+                _ => {}
+            }
         }
+        deps
     }
 }

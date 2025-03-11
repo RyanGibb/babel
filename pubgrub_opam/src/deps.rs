@@ -12,7 +12,10 @@ use std::sync::{LazyLock, Mutex};
 pub enum OpamPackage {
     Root(Vec<(OpamPackage, Range<OpamVersion>)>),
     Base(String),
-    Depext(Vec<String>),
+    Depext {
+        names: Vec<String>,
+        formula: VersionFormula,
+    },
     ConflictClass(String),
     Lor {
         lhs: Box<PackageFormula>,
@@ -29,7 +32,7 @@ pub enum OpamPackage {
     Var(String),
 }
 
-pub static VARIABLE_CACHE: LazyLock<Mutex<HashMap<String, HashSet<OpamVersion>>>> =
+static VARIABLE_CACHE: LazyLock<Mutex<HashMap<String, HashSet<OpamVersion>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static CONFLICT_CLASS_CACHE: LazyLock<Mutex<HashMap<String, HashSet<OpamVersion>>>> =
@@ -51,7 +54,7 @@ impl Display for OpamPackage {
         match self {
             OpamPackage::Root(_) => write!(f, "Root"),
             OpamPackage::Base(pkg) => write!(f, "{}", pkg),
-            OpamPackage::Depext(pkgs) => write!(f, "{:?}", pkgs),
+            OpamPackage::Depext { names, formula } => write!(f, "{:?} {{{}}}", names, formula),
             OpamPackage::ConflictClass(pkg) => write!(f, "Conflict class {}", pkg),
             OpamPackage::Lor { lhs, rhs } => write!(f, "{} | {}", lhs, rhs),
             OpamPackage::Formula { base, formula } => write!(f, "{} {{{}}}", base, formula),
@@ -75,7 +78,7 @@ impl OpamIndex {
     pub fn list_versions(&self, package: &OpamPackage) -> impl Iterator<Item = OpamVersion> + '_ {
         let versions = match package {
             OpamPackage::Root(_) => vec![OpamVersion("".to_string())],
-            OpamPackage::Depext(_) => vec![OpamVersion("".to_string())],
+            OpamPackage::Depext { .. } => vec![OpamVersion("".to_string())],
             OpamPackage::Base(pkg) => self.available_versions(pkg),
             OpamPackage::ConflictClass(pkg) => CONFLICT_CLASS_CACHE
                 .lock()
@@ -96,6 +99,23 @@ impl OpamIndex {
                     OpamVersion("openbsd".to_string()),
                     OpamVersion("netbsd".to_string()),
                     OpamVersion("dragonfly".to_string()),
+                ],
+                "os-distribution" => vec![
+                    // OpamVersion("homebrew".to_string()),
+                    // OpamVersion("macports".to_string()),
+                    // OpamVersion("macos".to_string()),
+                    // OpamVersion("android".to_string()),
+                    OpamVersion("debian".to_string()),
+                    // OpamVersion("ubuntu".to_string()),
+                    OpamVersion("alpine".to_string()),
+                    // TODO ...
+                ],
+                "os-family" => vec![
+                    OpamVersion("debian".to_string()),
+                    OpamVersion("alpine".to_string()),
+                    // OpamVersion("windows".to_string()),
+                    // OpamVersion("bsd".to_string()),
+                    // TODO ...
                 ],
                 "arch" => vec![
                     OpamVersion("arm64".to_string()),
@@ -300,7 +320,7 @@ impl DependencyProvider for OpamIndex {
                 }
                 Ok(Dependencies::Available(Map::default()))
             }
-            OpamPackage::Depext(_) => {
+            OpamPackage::Depext{ .. } => {
                 if self.debug.get() {
                     println!("({}, {})", package, version);
                 }
@@ -343,20 +363,13 @@ fn from_formula(
         }
         PackageFormula::Depext { names, formula } => {
             let mut map = Map::default();
-            match formula {
-                // in parse.rs we collapse non-filtered formula to a single version dependency
-                VersionFormula::Version(range) => {
-                    map.insert(OpamPackage::Depext(names.to_vec()), range.0.clone())
-                }
-                // otherwise, we need to introduce a formula packge to select variable values
-                _ => map.insert(
-                    OpamPackage::Formula {
-                        base: Box::new(OpamPackage::Depext(names.to_vec())),
-                        formula: Box::new(formula.clone()),
-                    },
-                    Range::full(),
-                ),
-            };
+            map.insert(
+                OpamPackage::Depext {
+                    names: names.to_vec(),
+                    formula: formula.clone(),
+                },
+                Range::full(),
+            );
             map
         }
         PackageFormula::ConflictClass { name, package } => {
