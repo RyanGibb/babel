@@ -320,7 +320,7 @@ impl DependencyProvider for OpamIndex {
                 }
                 Ok(Dependencies::Available(Map::default()))
             }
-            OpamPackage::Depext{ .. } => {
+            OpamPackage::Depext { .. } => {
                 if self.debug.get() {
                     println!("({}, {})", package, version);
                 }

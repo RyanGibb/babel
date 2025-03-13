@@ -1,29 +1,34 @@
 use crate::index::BabelIndex;
-use crate::version::BabelVersion;
+use crate::version::{BabelVersion, BabelVersionSet};
 use core::fmt::Display;
 use pubgrub::{Dependencies, DependencyProvider, Map, Range};
-use std::convert::Infallible;
 
 use pubgrub_alpine::deps::AlpinePackage;
+use pubgrub_alpine::version::AlpineVersion;
+use pubgrub_cargo::names::Names as CargoPackage;
+use pubgrub_cargo::SomeError;
 use pubgrub_debian::deps::DebianPackage;
+use pubgrub_debian::version::DebianVersion;
 use pubgrub_opam::{deps::OpamPackage, version::OpamVersion};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum BabelPackage {
-    Root(Vec<(BabelPackage, Range<BabelVersion>)>),
+pub enum BabelPackage<'a> {
+    Root(Vec<(BabelPackage<'a>, BabelVersionSet)>),
     Opam(OpamPackage),
     Debian(DebianPackage),
     Alpine(AlpinePackage),
+    Cargo(CargoPackage<'a>),
     Platform(PlatformPackage),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum PlatformPackage {
     OS,
-    // Architecture,
+    // TODO (not now),
+    // Architecture
 }
 
-impl Display for BabelPackage {
+impl<'a> Display for BabelPackage<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BabelPackage::Root(_) => write!(f, "Root"),
@@ -31,6 +36,7 @@ impl Display for BabelPackage {
             BabelPackage::Opam(pkg) => write!(f, "Opam {}", pkg),
             BabelPackage::Debian(pkg) => write!(f, "Debian {}", pkg),
             BabelPackage::Alpine(pkg) => write!(f, "Alpine {}", pkg),
+            BabelPackage::Cargo(pkg) => write!(f, "Cargo {}", pkg),
         }
     }
 }
@@ -70,65 +76,16 @@ fn contains_os_condition(formula: &pubgrub_opam::index::VersionFormula, os_name:
     }
 }
 
-impl BabelIndex {
-    pub fn list_versions(&self, package: &BabelPackage) -> impl Iterator<Item = BabelVersion> + '_ {
-        let versions: Vec<_> = match package {
-            BabelPackage::Root(_) => vec![BabelVersion::Singular],
-            BabelPackage::Opam(OpamPackage::Depext { .. }) => {
-                vec![
-                    BabelVersion::Opam(OpamVersion("alpine".to_string())),
-                    BabelVersion::Opam(OpamVersion("debian".to_string())),
-                ]
-            }
-            BabelPackage::Opam(pkg) => self
-                .opam
-                .list_versions(pkg)
-                .map(|x| BabelVersion::Opam(x))
-                .collect(),
-            BabelPackage::Debian(pkg) => self
-                .debian
-                .list_versions(pkg)
-                .map(|x| BabelVersion::Debian(x))
-                .collect(),
-            BabelPackage::Alpine(pkg) => self
-                .alpine
-                .list_versions(pkg)
-                .map(|x| BabelVersion::Alpine(x))
-                .collect(),
-            BabelPackage::Platform(PlatformPackage::OS) => vec![
-                BabelVersion::Platform("debian".to_string()),
-                BabelVersion::Platform("alpine".to_string()),
-            ],
-        };
-        if self.version_debug.get() {
-            print!("versions of {}", package);
-            if versions.len() > 0 {
-                print!(": ")
-            }
-            let mut first = true;
-            for version in versions.clone() {
-                if !first {
-                    print!(", ");
-                }
-                print!("{}", version);
-                first = false;
-            }
-            println!();
-        }
-        versions.into_iter()
-    }
-}
-
-impl DependencyProvider for BabelIndex {
-    type P = BabelPackage;
+impl<'a> DependencyProvider for BabelIndex<'a> {
+    type P = BabelPackage<'a>;
 
     type V = BabelVersion;
 
-    type VS = Range<BabelVersion>;
+    type VS = BabelVersionSet;
 
     type M = String;
 
-    type Err = Infallible;
+    type Err = SomeError;
 
     type Priority = u8;
 
@@ -146,15 +103,56 @@ impl DependencyProvider for BabelIndex {
         package: &Self::P,
         range: &Self::VS,
     ) -> Result<Option<Self::V>, Self::Err> {
-        Ok(self
-            .list_versions(package)
+        match package {
+            BabelPackage::Cargo(pkg) => {
+                let set = match range {
+                    BabelVersionSet::Cargo(set) => set,
+                    _ => panic!(),
+                };
+                Ok(self
+                    .cargo
+                    .choose_version(pkg, set)?
+                    .map(|v| BabelVersion::Cargo(v)))
+            }
+            BabelPackage::Root(_) => Ok(Some(BabelVersion::Singular)),
+            BabelPackage::Opam(OpamPackage::Depext { .. }) => Ok(vec![
+                BabelVersion::Opam(OpamVersion("alpine".to_string())),
+                BabelVersion::Opam(OpamVersion("debian".to_string())),
+            ]
+            .into_iter()
             .filter(|v| range.contains(v))
-            .next())
+            .next()),
+            BabelPackage::Opam(pkg) => Ok(self
+                .opam
+                .list_versions(pkg)
+                .map(|x| BabelVersion::Opam(x))
+                .filter(|v| range.contains(v))
+                .next()),
+            BabelPackage::Debian(pkg) => Ok(self
+                .debian
+                .list_versions(pkg)
+                .map(|x| BabelVersion::Debian(x))
+                .filter(|v| range.contains(v))
+                .next()),
+            BabelPackage::Alpine(pkg) => Ok(self
+                .alpine
+                .list_versions(pkg)
+                .map(|x| BabelVersion::Alpine(x))
+                .filter(|v| range.contains(v))
+                .next()),
+            BabelPackage::Platform(PlatformPackage::OS) => Ok(vec![
+                BabelVersion::Platform("debian".to_string()),
+                BabelVersion::Platform("alpine".to_string()),
+            ]
+            .into_iter()
+            .filter(|v| range.contains(v))
+            .next()),
+        }
     }
 
     fn get_dependencies(
         &self,
-        package: &BabelPackage,
+        package: &BabelPackage<'a>,
         version: &BabelVersion,
     ) -> Result<Dependencies<Self::P, Self::VS, Self::M>, Self::Err> {
         let deps = match package {
@@ -168,19 +166,19 @@ impl DependencyProvider for BabelIndex {
                         "debian" => {
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),
-                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                BabelVersionSet::singleton(BabelVersion::Opam(OpamVersion(
                                     "debian".to_string(),
                                 ))),
                             );
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os-family".to_string())),
-                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                BabelVersionSet::singleton(BabelVersion::Opam(OpamVersion(
                                     "debian".to_string(),
                                 ))),
                             );
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os".to_string())),
-                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                BabelVersionSet::singleton(BabelVersion::Opam(OpamVersion(
                                     "linux".to_string(),
                                 ))),
                             );
@@ -188,19 +186,19 @@ impl DependencyProvider for BabelIndex {
                         "alpine" => {
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),
-                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                BabelVersionSet::singleton(BabelVersion::Opam(OpamVersion(
                                     "alpine".to_string(),
                                 ))),
                             );
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os-family".to_string())),
-                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                BabelVersionSet::singleton(BabelVersion::Opam(OpamVersion(
                                     "alpine".to_string(),
                                 ))),
                             );
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os".to_string())),
-                                Range::singleton(BabelVersion::Opam(OpamVersion(
+                                BabelVersionSet::singleton(BabelVersion::Opam(OpamVersion(
                                     "linux".to_string(),
                                 ))),
                             );
@@ -218,6 +216,7 @@ impl DependencyProvider for BabelIndex {
                             let mut map = Map::default();
                             for depext in names {
                                 let OpamVersion(v) = ver;
+                                // TODO handle virtual packages
                                 match v.as_str() {
                                     "debian" => {
                                         if contains_os_condition(formula, "debian") {
@@ -225,7 +224,9 @@ impl DependencyProvider for BabelIndex {
                                                 BabelPackage::Debian(DebianPackage::Base(
                                                     depext.to_string(),
                                                 )),
-                                                Range::<BabelVersion>::full(),
+                                                BabelVersionSet::Debian(
+                                                    Range::<DebianVersion>::full(),
+                                                ),
                                             );
                                         }
                                     }
@@ -235,7 +236,9 @@ impl DependencyProvider for BabelIndex {
                                                 BabelPackage::Alpine(AlpinePackage::Base(
                                                     depext.to_string(),
                                                 )),
-                                                Range::<BabelVersion>::full(),
+                                                BabelVersionSet::Alpine(
+                                                    Range::<AlpineVersion>::full(),
+                                                ),
                                             );
                                         }
                                     }
@@ -245,25 +248,16 @@ impl DependencyProvider for BabelIndex {
                             Dependencies::Available(map)
                         }
                         _ => {
-                            let deps = match self.opam.get_dependencies(pkg, ver)? {
-                                Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
-                                Dependencies::Available(dc) => Dependencies::Available(
+                            let deps = match self.opam.get_dependencies(pkg, ver) {
+                                Ok(Dependencies::Unavailable(m)) => Dependencies::Unavailable(m),
+                                Ok(Dependencies::Available(dc)) => Dependencies::Available(
                                     dc.into_iter()
                                         .map(|(p, vs)| {
-                                            (
-                                                BabelPackage::Opam(p),
-                                                vs.into_iter()
-                                                    .map(|(s, e)| {
-                                                        (
-                                                            s.map(|v| BabelVersion::Opam(v)),
-                                                            e.map(|v| BabelVersion::Opam(v)),
-                                                        )
-                                                    })
-                                                    .collect(),
-                                            )
+                                            (BabelPackage::Opam(p), BabelVersionSet::Opam(vs))
                                         })
                                         .collect(),
                                 ),
+                                _ => panic!(),
                             };
                             deps
                         }
@@ -275,25 +269,16 @@ impl DependencyProvider for BabelIndex {
             }
             BabelPackage::Debian(pkg) => {
                 if let BabelVersion::Debian(ver) = version {
-                    let deps = match self.debian.get_dependencies(pkg, ver)? {
-                        Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
-                        Dependencies::Available(dc) => Dependencies::Available(
+                    let deps = match self.debian.get_dependencies(pkg, ver) {
+                        Ok(Dependencies::Unavailable(m)) => Dependencies::Unavailable(m),
+                        Ok(Dependencies::Available(dc)) => Dependencies::Available(
                             dc.into_iter()
                                 .map(|(p, vs)| {
-                                    (
-                                        BabelPackage::Debian(p),
-                                        vs.into_iter()
-                                            .map(|(s, e)| {
-                                                (
-                                                    s.map(|v| BabelVersion::Debian(v)),
-                                                    e.map(|v| BabelVersion::Debian(v)),
-                                                )
-                                            })
-                                            .collect(),
-                                    )
+                                    (BabelPackage::Debian(p), BabelVersionSet::Debian(vs))
                                 })
                                 .collect(),
                         ),
+                        _ => panic!(),
                     };
                     Ok(deps)
                 } else {
@@ -302,23 +287,29 @@ impl DependencyProvider for BabelIndex {
             }
             BabelPackage::Alpine(pkg) => {
                 if let BabelVersion::Alpine(ver) = version {
-                    let deps = match self.alpine.get_dependencies(pkg, ver)? {
+                    let deps = match self.alpine.get_dependencies(pkg, ver) {
+                        Ok(Dependencies::Unavailable(m)) => Dependencies::Unavailable(m),
+                        Ok(Dependencies::Available(dc)) => Dependencies::Available(
+                            dc.into_iter()
+                                .map(|(p, vs)| {
+                                    (BabelPackage::Alpine(p), BabelVersionSet::Alpine(vs))
+                                })
+                                .collect(),
+                        ),
+                        Err(_) => panic!(),
+                    };
+                    Ok(deps)
+                } else {
+                    panic!();
+                }
+            }
+            BabelPackage::Cargo(pkg) => {
+                if let BabelVersion::Cargo(ver) = version {
+                    let deps = match self.cargo.get_dependencies(pkg, ver)? {
                         Dependencies::Unavailable(m) => Dependencies::Unavailable(m),
                         Dependencies::Available(dc) => Dependencies::Available(
                             dc.into_iter()
-                                .map(|(p, vs)| {
-                                    (
-                                        BabelPackage::Alpine(p),
-                                        vs.into_iter()
-                                            .map(|(s, e)| {
-                                                (
-                                                    s.map(|v| BabelVersion::Alpine(v)),
-                                                    e.map(|v| BabelVersion::Alpine(v)),
-                                                )
-                                            })
-                                            .collect(),
-                                    )
-                                })
+                                .map(|(p, vs)| (BabelPackage::Cargo(p), BabelVersionSet::Cargo(vs)))
                                 .collect(),
                         ),
                     };

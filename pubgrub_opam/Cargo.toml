@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pubgrub = "0.3.0"
+pubgrub = { git = "https://github.com/pubgrub-rs/pubgrub", branch = "dev", features = ["serde"] }
 rustc-hash = "=1.1.0"
 itertools = "0.10.1"
 serde = { version = "*", features = ["derive"] }

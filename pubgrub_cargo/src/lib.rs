@@ -28,7 +28,7 @@ pub mod cargo_resolver;
 pub mod hasher;
 pub mod index_data;
 pub mod names;
-mod rc_semver_pubgrub;
+pub mod rc_semver_pubgrub;
 pub mod read_index;
 #[cfg(test)]
 mod tests;

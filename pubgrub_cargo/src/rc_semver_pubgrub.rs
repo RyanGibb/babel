@@ -6,11 +6,11 @@ use semver_pubgrub::SemverPubgrub;
 #[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(transparent)]
 pub struct RcSemverPubgrub {
-    pub(crate) inner: Rc<SemverPubgrub>,
+    pub(crate) inner: Rc<SemverPubgrub<semver::Version>>,
 }
 
 impl RcSemverPubgrub {
-    pub fn new(inner: SemverPubgrub) -> Self {
+    pub fn new(inner: SemverPubgrub<semver::Version>) -> Self {
         Self {
             inner: Rc::new(inner),
         }
@@ -25,14 +25,14 @@ impl std::fmt::Display for RcSemverPubgrub {
 
 thread_local! {
     static ARC_SEMVER_PUBGRUB_EMPTY: RefCell<RcSemverPubgrub> = RefCell::new(RcSemverPubgrub {
-        inner: Rc::new(SemverPubgrub::empty()),
+        inner: Rc::new(SemverPubgrub::<semver::Version>::empty()),
     });
 
     static ARC_SEMVER_PUBGRUB_SINGLETON: RefCell<HashMap<semver::Version, RcSemverPubgrub>> = RefCell::new(HashMap::default());
 }
 
 impl VersionSet for RcSemverPubgrub {
-    type V = <SemverPubgrub as VersionSet>::V;
+    type V = <SemverPubgrub<semver::Version> as VersionSet>::V;
 
     fn empty() -> Self {
         ARC_SEMVER_PUBGRUB_EMPTY.with_borrow(|v| v.clone())

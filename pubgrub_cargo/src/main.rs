@@ -2,11 +2,11 @@ use crossbeam::channel::unbounded;
 use std::time::Duration;
 use std::{sync::mpsc, thread, time::Instant};
 
-use benchmark_from_crates::{
-    index_data, process_crate_version, read_index::read_index, Index, Mode, OutputSummary,
-};
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressFinish, ProgressStyle};
+use pubgrub_cargo::{
+    index_data, process_crate_version, read_index::read_index, Index, Mode, OutputSummary,
+};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator as _};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
