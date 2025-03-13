@@ -3,16 +3,20 @@ use pubgrub::{
     SelectedDependencies,
 };
 use pubgrub_alpine::deps::AlpinePackage;
+use pubgrub_alpine::version::AlpineVersion;
 use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
 use pubgrub_babel::index::BabelIndex;
 use pubgrub_babel::version::BabelVersion;
 use pubgrub_debian::deps::DebianPackage;
+use pubgrub_debian::version::DebianVersion;
 use pubgrub_opam::deps::OpamPackage;
 use pubgrub_opam::index::OpamIndex;
 use pubgrub_opam::version::OpamVersion;
 use std::collections::{BTreeMap, HashSet};
 use std::error::Error;
 use std::str::FromStr;
+use clap::Parser;
+use pubgrub::Range;
 
 fn solve_repo(
     pkg: BabelPackage,
@@ -263,11 +267,54 @@ fn solve_repo(
     Ok(sol)
 }
 
+#[derive(Parser)]
+#[command(name = "solver", about = "Solve repository dependencies")]
+struct Cli {
+    /// List of packages with their ecosystems and versions in the form `ecosystem:package_name:version`
+    packages: Vec<String>,
+    /// List of variable assignments in the form `variable_name=value`
+    #[clap(short, long, value_name = "VAR=value")]
+    variables: Vec<String>,
+}
+
+
 fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::parse();
+    let mut packages = args.packages.into_iter().map(|pkg_ver| {
+        let parts: Vec<&str> = pkg_ver.split(':').collect();
+        if parts.len() != 3 {
+            eprintln!("Invalid ecosystem-package-version format: {}", pkg_ver);
+            std::process::exit(1);
+        }
+        let ecosystem = parts[0];
+        let name = parts[1];
+        let version = parts[2];
+        match ecosystem {
+            "opam" => (BabelPackage::Opam(OpamPackage::Base(name.to_string())), Range::singleton(BabelVersion::Opam(OpamVersion(version.to_string())))),
+            "debian" => (BabelPackage::Debian(DebianPackage::Base(name.to_string())), Range::singleton(BabelVersion::Debian(DebianVersion(version.to_string())))),
+            "alpine" => (BabelPackage::Alpine(AlpinePackage::Base(name.to_string())), Range::singleton(BabelVersion::Alpine(AlpineVersion(version.to_string())))),
+            _ => {
+                eprintln!("Invalid ecosystem: {}", ecosystem);
+                std::process::exit(1);
+            }
+        }
+    }).collect::<Vec<_>>();
+    let variables = args.variables.into_iter().map(|var_val| {
+        let parts: Vec<&str> = var_val.split('=').collect();
+        if parts.len() != 2 {
+            eprintln!("Invalid variable format: {}", var_val);
+            std::process::exit(1);
+        }
+        let var = parts[0];
+        let val = parts[1];
+        (BabelPackage::Opam(OpamPackage::Var(var.to_string())), Range::singleton(BabelVersion::Opam(OpamVersion(val.to_string()))))
+    }).collect::<Vec<_>>();
+    packages.extend(variables);
+    let root = BabelPackage::Root(packages);
     solve_repo(
-        BabelPackage::Opam(OpamPackage::from_str("A").unwrap()),
-        BabelVersion::Opam("1.0.0".parse::<OpamVersion>().unwrap()),
-        "pubgrub_opam/example-repo/packages",
+        root,
+        BabelVersion::Singular,
+        "pubgrub_opam/opam-repository/packages",
         "pubgrub_debian/repositories/buster/Packages",
         "pubgrub_alpine/repositories/3.20/APKINDEX",
     )?;
@@ -276,8 +323,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
-    use pubgrub::Range;
-    use pubgrub_debian::{deps::DebianPackage, version::DebianVersion};
     use pubgrub_opam::deps::TRUE_VERSION;
 
     use super::*;
