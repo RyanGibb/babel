@@ -1,0 +1,78 @@
+{
+    "Bucket:memchr@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:memchr@0.0.1/std": {
+        "0.0.1": Ok({
+            "Bucket:memchr@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_13_weak_dependencies@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:winnow@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:winnow@0.0.1/default=true": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:winnow@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:winnow@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:winnow@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:memchr@0.0.1/std": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:winnow@0.0.1/dep:memchr": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:winnow@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:winnow@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:winnow@0.0.1/default": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:winnow@0.0.1/dep:memchr": {
+        "0.0.1": Ok({
+            "Bucket:winnow@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:memchr@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+}

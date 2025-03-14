@@ -1,0 +1,97 @@
+{
+    "Bucket:quote@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:quote@0.0.1/proc-macro": {
+        "0.0.1": Ok({
+            "Bucket:quote@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:syn@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:syn@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:syn@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:syn@0.0.1/dep:quote": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:quote@0.0.1/proc-macro": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:syn@0.0.1/quote": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:syn@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:syn@0.0.1/default": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:syn@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:syn@0.0.1/dep:quote": {
+        "0.0.1": Ok({
+            "Bucket:quote@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:syn@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:syn@0.0.1/quote": {
+        "0.0.1": Ok({
+            "Bucket:syn@0.0.1/dep:quote": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:syn@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_26_implicit_feature_with_dep_feature@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:syn@0.0.1/default=true": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:syn@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+}

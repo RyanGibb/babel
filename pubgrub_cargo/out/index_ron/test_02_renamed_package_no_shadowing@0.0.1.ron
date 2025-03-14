@@ -1,0 +1,30 @@
+[
+    (
+        name: "test_02_renamed_package_no_shadowing",
+        deps: [
+            (
+                name: "wasmi",
+            ),
+        ],
+    ),
+    (
+        name: "url",
+    ),
+    (
+        name: "wasmi",
+        deps: [
+            (
+                name: "wasmparser",
+                package_name: "wasmparser-nostd",
+            ),
+        ],
+    ),
+    (
+        name: "wasmparser",
+        deps: [
+            (
+                name: "url",
+            ),
+        ],
+    ),
+]

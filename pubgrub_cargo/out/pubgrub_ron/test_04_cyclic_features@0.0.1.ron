@@ -1,0 +1,47 @@
+{
+    "Bucket:test_04_cyclic_features@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:windows@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:windows@0.0.1/Win32_Foundation": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:windows@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:windows@0.0.1/Win32": {
+        "0.0.1": Ok({
+            "Bucket:windows@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:windows@0.0.1/Win32_Foundation": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:windows@0.0.1/Win32_Foundation": {
+        "0.0.1": Ok({
+            "Bucket:windows@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:windows@0.0.1/Win32": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+}

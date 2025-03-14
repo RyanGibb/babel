@@ -1,0 +1,36 @@
+[
+    (
+        name: "memchr",
+        features: {
+            "std": [],
+        },
+    ),
+    (
+        name: "test_13_weak_dependencies",
+        deps: [
+            (
+                name: "winnow",
+                req: "^0.0.1",
+                default_features: true,
+            ),
+        ],
+    ),
+    (
+        name: "winnow",
+        deps: [
+            (
+                name: "memchr",
+                req: "^0.0.1",
+                optional: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "memchr?/std",
+            ],
+            "simd": [
+                "dep:memchr",
+            ],
+        },
+    ),
+]

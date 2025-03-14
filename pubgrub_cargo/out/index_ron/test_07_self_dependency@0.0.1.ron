@@ -1,0 +1,11 @@
+[
+    (
+        name: "test_07_self_dependency",
+        deps: [
+            (
+                name: "test_07_self_dependency",
+                req: "^0.0.1",
+            ),
+        ],
+    ),
+]

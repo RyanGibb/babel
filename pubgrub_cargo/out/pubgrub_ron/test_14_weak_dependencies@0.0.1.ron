@@ -1,0 +1,86 @@
+{
+    "Bucket:a@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:b@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:b@0.0.1/dep:a": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1/perf-literal": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1/dep:a": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:c@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:c@0.0.1/dep:b": {
+        "0.0.1": Ok({
+            "Bucket:c@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:c@0.0.1/perf-literal": {
+        "0.0.1": Ok({
+            "Bucket:c@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:c@0.0.1/dep:b": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:b@0.0.1/perf-literal": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_14_weak_dependencies@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:c@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:c@0.0.1/perf-literal": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+}

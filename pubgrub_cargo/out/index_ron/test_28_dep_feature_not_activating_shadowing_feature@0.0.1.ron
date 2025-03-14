@@ -1,0 +1,37 @@
+[
+    (
+        name: "fuel-tx",
+        deps: [
+            (
+                name: "serde",
+            ),
+            (
+                name: "serde_json",
+                optional: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "serde/default",
+            ],
+            "serde": [
+                "serde_json",
+            ],
+        },
+    ),
+    (
+        name: "serde",
+        features: {
+            "default": [],
+        },
+    ),
+    (
+        name: "test_28_dep_feature_not_activating_shadowing_feature",
+        deps: [
+            (
+                name: "fuel-tx",
+                default_features: true,
+            ),
+        ],
+    ),
+]

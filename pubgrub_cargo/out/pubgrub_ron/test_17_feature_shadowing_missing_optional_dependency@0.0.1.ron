@@ -1,0 +1,56 @@
+{
+    "Bucket:rustix@0.38.x": {
+        "0.38.34": Ok({}),
+    },
+    "Bucket:rustix@0.38.x/alloc": {
+        "0.38.34": Ok({
+            "Bucket:rustix@0.38.x": (
+                normal: [
+                    (Included("0.38.34"), Included("0.38.34")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:rustix@0.38.x/default": {
+        "0.38.34": Ok({
+            "Bucket:rustix@0.38.x/alloc": (
+                normal: [
+                    (Included("0.38.34"), Included("0.38.34")),
+                ],
+            ),
+            "Bucket:rustix@0.38.x": (
+                normal: [
+                    (Included("0.38.34"), Included("0.38.34")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:rustix@0.38.x/default=true": {
+        "0.38.34": Ok({
+            "Bucket:rustix@0.38.x/default": (
+                normal: [
+                    (Included("0.38.34"), Included("0.38.34")),
+                ],
+            ),
+            "Bucket:rustix@0.38.x": (
+                normal: [
+                    (Included("0.38.34"), Included("0.38.34")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_17_feature_shadowing_missing_optional_dependency@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:rustix@0.38.x/default=true": (
+                normal: [
+                    (Included("0.38.31"), Excluded("0.39.0")),
+                ],
+            ),
+            "Bucket:rustix@0.38.x": (
+                normal: [
+                    (Included("0.38.31"), Excluded("0.39.0")),
+                ],
+            ),
+        }),
+    },
+}

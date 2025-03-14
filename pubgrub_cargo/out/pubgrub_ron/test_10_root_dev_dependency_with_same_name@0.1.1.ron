@@ -1,0 +1,22 @@
+{
+    "Bucket:log@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:test_10_root_dev_dependency_with_same_name@0.1.x": {
+        "0.1.0": Ok({}),
+    },
+    "Bucket:test_10_root_dev_dependency_with_same_name@0.1.x/All-FEATURES": {
+        "0.1.1": Ok({
+            "Bucket:test_10_root_dev_dependency_with_same_name@0.1.x": (
+                normal: [
+                    (Included("0.1.0"), Excluded("0.1.1")),
+                ],
+            ),
+            "Bucket:log@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

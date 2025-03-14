@@ -1,0 +1,78 @@
+{
+    "Bucket:a@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:a@0.0.1/b_package": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/dep:b_package": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/b_package": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/default": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/dep:b_package": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:test_01_renamed_package@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:a@0.0.1/default=true": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

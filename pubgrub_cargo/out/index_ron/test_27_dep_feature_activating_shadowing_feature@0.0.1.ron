@@ -1,0 +1,42 @@
+[
+    (
+        name: "a",
+        deps: [
+            (
+                name: "b",
+                req: "^0.0.1",
+                optional: true,
+            ),
+            (
+                name: "x",
+                req: "^0.0.1",
+                optional: true,
+            ),
+        ],
+        features: {
+            "b": [
+                "dep:b",
+                "x",
+            ],
+            "default": [
+                "b/native",
+            ],
+        },
+    ),
+    (
+        name: "b",
+        features: {
+            "native": [],
+        },
+    ),
+    (
+        name: "test_27_dep_feature_activating_shadowing_feature",
+        deps: [
+            (
+                name: "a",
+                req: "^0.0.1",
+                default_features: true,
+            ),
+        ],
+    ),
+]

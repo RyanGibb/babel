@@ -1,0 +1,19 @@
+{
+    "Bucket:test_20_no_implicit_feature@0.1.x/All-FEATURES": {
+        "0.1.0": Ok({
+            "Bucket:ureq@2.x.y": (
+                normal: [
+                    (Included("2.0.0"), Excluded("3.0.0")),
+                ],
+            ),
+            "Bucket:ureq@2.x.y/c": (
+                normal: [
+                    (Included("2.0.0"), Excluded("3.0.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:ureq@2.x.y/c": {
+        "2.9.7": Err("no matching feat nor dep"),
+    },
+}

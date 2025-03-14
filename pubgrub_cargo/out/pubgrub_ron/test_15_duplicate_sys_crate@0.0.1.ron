@@ -1,0 +1,39 @@
+{
+    "Bucket:js-sys@0.2.x": {
+        "0.2.5": Ok({
+            "Bucket:test_15_duplicate_sys_crate@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_15_duplicate_sys_crate@0.0.1": {
+        "0.0.1": Ok({
+            "Links:wasm_bindgen": (
+                normal: [
+                    (Included("6857891005868950995.0.0"), Included("6857891005868950995.0.0")),
+                ],
+            ),
+            "Bucket:js-sys@0.2.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_15_duplicate_sys_crate@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Links:wasm_bindgen": (
+                normal: [
+                    (Included("7056401279798008676.0.0"), Included("7056401279798008676.0.0")),
+                ],
+            ),
+            "Bucket:js-sys@0.2.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

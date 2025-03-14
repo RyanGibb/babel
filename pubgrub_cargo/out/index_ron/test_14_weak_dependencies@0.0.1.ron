@@ -1,0 +1,52 @@
+[
+    (
+        name: "a",
+    ),
+    (
+        name: "b",
+        deps: [
+            (
+                name: "a",
+                req: "^0.0.1",
+                optional: true,
+            ),
+        ],
+        features: {
+            "perf-literal": [
+                "dep:a",
+            ],
+        },
+    ),
+    (
+        name: "c",
+        deps: [
+            (
+                name: "b",
+                req: "^0.0.1",
+                optional: true,
+            ),
+        ],
+        features: {
+            "perf-literal": [
+                "b?/perf-literal",
+            ],
+            "perf-literal-multisubstring": [
+                "dep:b",
+            ],
+        },
+    ),
+    (
+        name: "test_14_weak_dependencies",
+        deps: [
+            (
+                name: "c",
+                req: "^0.0.1",
+            ),
+        ],
+        features: {
+            "default": [
+                "c/perf-literal",
+            ],
+        },
+    ),
+]

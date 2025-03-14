@@ -1,0 +1,32 @@
+[
+    (
+        name: "c",
+        vers: "0.18.1",
+    ),
+    (
+        name: "test_21_implicit_feature",
+        vers: "0.1.0",
+        deps: [
+            (
+                name: "ureq",
+                req: "^2.0",
+            ),
+        ],
+        features: {
+            "cookies": [
+                "ureq/c",
+            ],
+        },
+    ),
+    (
+        name: "ureq",
+        vers: "2.9.7",
+        deps: [
+            (
+                name: "c",
+                req: "^0.18",
+                optional: true,
+            ),
+        ],
+    ),
+]

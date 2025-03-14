@@ -1,0 +1,40 @@
+[
+    (
+        name: "parking_lot_core",
+        vers: "0.9.9",
+        deps: [
+            (
+                name: "smallvec",
+                req: "^1.6.1",
+            ),
+        ],
+    ),
+    (
+        name: "smallvec",
+        vers: "2.0.0-alpha.3",
+    ),
+    (
+        name: "test_03_prerelease_semver",
+        deps: [
+            (
+                name: "tokio",
+                default_features: true,
+            ),
+        ],
+    ),
+    (
+        name: "tokio",
+        vers: "1.35.1",
+        deps: [
+            (
+                name: "parking_lot_core",
+                optional: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "parking_lot_core",
+            ],
+        },
+    ),
+]

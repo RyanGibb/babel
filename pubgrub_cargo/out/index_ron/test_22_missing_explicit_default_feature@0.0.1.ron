@@ -1,0 +1,34 @@
+[
+    (
+        name: "fuel-tx",
+        deps: [
+            (
+                name: "serde",
+            ),
+            (
+                name: "serde_json",
+                optional: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "serde/default",
+            ],
+            "serde": [
+                "serde_json",
+            ],
+        },
+    ),
+    (
+        name: "serde",
+    ),
+    (
+        name: "test_22_missing_explicit_default_feature",
+        deps: [
+            (
+                name: "fuel-tx",
+                default_features: true,
+            ),
+        ],
+    ),
+]

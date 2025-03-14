@@ -1,0 +1,22 @@
+[
+    (
+        name: "a",
+        deps: [
+            (
+                name: "a",
+                optional: true,
+            ),
+        ],
+    ),
+    (
+        name: "test_08_activated_optional_self_dependency",
+        deps: [
+            (
+                name: "a",
+                features: [
+                    "a",
+                ],
+            ),
+        ],
+    ),
+]

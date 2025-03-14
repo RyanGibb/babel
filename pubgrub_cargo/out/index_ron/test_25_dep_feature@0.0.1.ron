@@ -1,0 +1,34 @@
+[
+    (
+        name: "proc-macro2",
+        features: {
+            "proc-macro": [],
+        },
+    ),
+    (
+        name: "syn",
+        deps: [
+            (
+                name: "proc-macro2",
+                req: "^0.0.1",
+            ),
+        ],
+        features: {
+            "proc-macro": [
+                "proc-macro2/proc-macro",
+            ],
+        },
+    ),
+    (
+        name: "test_25_dep_feature",
+        deps: [
+            (
+                name: "syn",
+                req: "^0.0.1",
+                features: [
+                    "proc-macro",
+                ],
+            ),
+        ],
+    ),
+]

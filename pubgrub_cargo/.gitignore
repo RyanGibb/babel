@@ -1,0 +1,7 @@
+/target
+*.ron
+!test_*.ron
+*.zip
+index/
+*.csv
+*.out

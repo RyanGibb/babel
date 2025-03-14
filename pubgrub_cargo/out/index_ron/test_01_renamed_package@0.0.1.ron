@@ -1,0 +1,29 @@
+[
+    (
+        name: "a",
+        deps: [
+            (
+                name: "b_package",
+                package_name: "b",
+                optional: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "b_package",
+            ],
+        },
+    ),
+    (
+        name: "b",
+    ),
+    (
+        name: "test_01_renamed_package",
+        deps: [
+            (
+                name: "a",
+                default_features: true,
+            ),
+        ],
+    ),
+]

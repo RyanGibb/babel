@@ -1,0 +1,31 @@
+[
+    (
+        name: "a",
+    ),
+    (
+        name: "b",
+        deps: [
+            (
+                name: "a",
+                req: "^0.0.1",
+                default_features: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "std",
+            ],
+            "std": [],
+        },
+    ),
+    (
+        name: "test_23_no_need_for_explicit_default_feature",
+        deps: [
+            (
+                name: "b",
+                req: "^0.0.1",
+                default_features: true,
+            ),
+        ],
+    ),
+]

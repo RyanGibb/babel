@@ -1,0 +1,40 @@
+[
+    (
+        name: "iced",
+        vers: "0.4.2",
+        deps: [
+            (
+                name: "iced_wgpu",
+                optional: true,
+            ),
+            (
+                name: "iced_wgpu",
+                features: [
+                    "webgl",
+                ],
+                optional: true,
+            ),
+        ],
+        features: {
+            "default": [
+                "iced_wgpu",
+            ],
+        },
+    ),
+    (
+        name: "iced_wgpu",
+        vers: "0.5.1",
+        features: {
+            "webgl": [],
+        },
+    ),
+    (
+        name: "test_19_same_dep_twice_feature_unification",
+        deps: [
+            (
+                name: "iced",
+                default_features: true,
+            ),
+        ],
+    ),
+]

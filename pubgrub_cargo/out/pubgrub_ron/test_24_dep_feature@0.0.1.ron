@@ -1,0 +1,60 @@
+{
+    "Bucket:proc-macro2@1.x.y": {
+        "1.0.78": Ok({}),
+    },
+    "Bucket:proc-macro2@1.x.y/proc-macro": {
+        "1.0.78": Ok({
+            "Bucket:proc-macro2@1.x.y": (
+                normal: [
+                    (Included("1.0.78"), Included("1.0.78")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:serde_derive@1.x.y": {
+        "1.0.196": Ok({
+            "Bucket:syn@2.x.y": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:syn@2.x.y/proc-macro": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:syn@2.x.y": {
+        "2.0.48": Ok({
+            "Bucket:proc-macro2@1.x.y": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:syn@2.x.y/proc-macro": {
+        "2.0.48": Ok({
+            "Bucket:syn@2.x.y": (
+                normal: [
+                    (Included("2.0.48"), Included("2.0.48")),
+                ],
+            ),
+            "Bucket:proc-macro2@1.x.y/proc-macro": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_24_dep_feature@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:serde_derive@1.x.y": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+        }),
+    },
+}

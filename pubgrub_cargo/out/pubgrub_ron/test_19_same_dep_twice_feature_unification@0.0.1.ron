@@ -1,0 +1,92 @@
+{
+    "Bucket:iced@0.4.x": {
+        "0.4.2": Ok({}),
+    },
+    "Bucket:iced@0.4.x/default": {
+        "0.4.2": Ok({
+            "Bucket:iced@0.4.x": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+            "Bucket:iced@0.4.x/iced_wgpu": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:iced@0.4.x/default=true": {
+        "0.4.2": Ok({
+            "Bucket:iced@0.4.x": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+            "Bucket:iced@0.4.x/default": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:iced@0.4.x/dep:iced_wgpu": {
+        "0.4.2": Ok({
+            "Bucket:iced@0.4.x": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+            "Bucket:iced_wgpu@0.5.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:iced_wgpu@0.5.x/webgl": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:iced@0.4.x/iced_wgpu": {
+        "0.4.2": Ok({
+            "Bucket:iced@0.4.x": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+            "Bucket:iced@0.4.x/dep:iced_wgpu": (
+                normal: [
+                    (Included("0.4.2"), Included("0.4.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:iced_wgpu@0.5.x": {
+        "0.5.1": Ok({}),
+    },
+    "Bucket:iced_wgpu@0.5.x/webgl": {
+        "0.5.1": Ok({
+            "Bucket:iced_wgpu@0.5.x": (
+                normal: [
+                    (Included("0.5.1"), Included("0.5.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_19_same_dep_twice_feature_unification@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:iced@0.4.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:iced@0.4.x/default=true": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

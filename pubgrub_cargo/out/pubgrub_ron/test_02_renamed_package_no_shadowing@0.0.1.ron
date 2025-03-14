@@ -1,0 +1,20 @@
+{
+    "Bucket:test_02_renamed_package_no_shadowing@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:wasmi@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:wasmi@0.0.1": {
+        "0.0.1": Ok({
+            "Bucket:wasmparser-nostd@0.0.0": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

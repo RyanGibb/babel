@@ -1,0 +1,20 @@
+[
+    (
+        name: "js-sys",
+        vers: "0.2.5",
+        deps: [
+            (
+                name: "test_15_duplicate_sys_crate",
+            ),
+        ],
+    ),
+    (
+        name: "test_15_duplicate_sys_crate",
+        deps: [
+            (
+                name: "js-sys",
+            ),
+        ],
+        links: Some("wasm_bindgen"),
+    ),
+]

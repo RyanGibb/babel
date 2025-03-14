@@ -1,0 +1,36 @@
+[
+    (
+        name: "alloc",
+        vers: "1.0.0",
+    ),
+    (
+        name: "rustix",
+        vers: "0.38.34",
+        deps: [
+            (
+                name: "alloc",
+                req: "^1.0.0",
+                optional: true,
+            ),
+        ],
+        features: {
+            "alloc": [],
+            "default": [
+                "dep:alloc",
+            ],
+            "rustc-dep-of-std": [
+                "alloc",
+            ],
+        },
+    ),
+    (
+        name: "test_18_feature_shadowing_activated_optional_dependency",
+        deps: [
+            (
+                name: "rustix",
+                req: "^0.38.31",
+                default_features: true,
+            ),
+        ],
+    ),
+]

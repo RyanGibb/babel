@@ -1,0 +1,29 @@
+{
+    "Bucket:a@0.1.x": {
+        "0.1.1": Ok({
+            "Bucket:test_06_cyclic_dependencies@0.1.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_06_cyclic_dependencies@0.1.x": {
+        "0.1.2": Ok({
+            "Bucket:a@0.1.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_06_cyclic_dependencies@0.1.x/All-FEATURES": {
+        "0.1.2": Ok({
+            "Bucket:a@0.1.x": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

@@ -1,0 +1,27 @@
+[
+    (
+        name: "burn-core",
+        deps: [
+            (
+                name: "burn-ndarray",
+                req: "^0.6.0",
+                kind: dev,
+            ),
+        ],
+        features: {
+            "default": [
+                "burn-ndarray/std",
+            ],
+        },
+    ),
+    (
+        name: "test_11_dev_dependency",
+        deps: [
+            (
+                name: "burn-core",
+                req: "^0.0.1",
+                default_features: true,
+            ),
+        ],
+    ),
+]

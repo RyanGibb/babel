@@ -1,0 +1,116 @@
+{
+    "Bucket:a@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:a@0.0.1/b": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/x": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/dep:b": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1/native": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:a@0.0.1/dep:b": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/b": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/default": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/dep:x": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:x@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/x": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/dep:x": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:b@0.0.1/native": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_27_dep_feature_activating_shadowing_feature@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:a@0.0.1/default=true": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+}

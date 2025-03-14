@@ -1,0 +1,42 @@
+{
+    "Bucket:a@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:a@0.0.1/a": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:a@0.0.1/dep:a": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:a@0.0.1/dep:a": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_08_activated_optional_self_dependency@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:a@0.0.1/a": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}

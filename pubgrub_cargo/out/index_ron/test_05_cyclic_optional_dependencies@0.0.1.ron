@@ -1,0 +1,34 @@
+[
+    (
+        name: "async-global-executor",
+        deps: [
+            (
+                name: "io-lifetimes",
+                optional: true,
+            ),
+        ],
+    ),
+    (
+        name: "io-lifetimes",
+        deps: [
+            (
+                name: "test_05_cyclic_optional_dependencies",
+                features: [
+                    "async-global-executor",
+                ],
+            ),
+        ],
+    ),
+    (
+        name: "test_05_cyclic_optional_dependencies",
+        deps: [
+            (
+                name: "async-global-executor",
+                features: [
+                    "io-lifetimes",
+                ],
+                optional: true,
+            ),
+        ],
+    ),
+]

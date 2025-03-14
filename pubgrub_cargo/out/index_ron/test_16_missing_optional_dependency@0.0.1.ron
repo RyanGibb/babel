@@ -1,0 +1,25 @@
+[
+    (
+        name: "b",
+        vers: "0.3.7",
+        deps: [
+            (
+                name: "c",
+                optional: true,
+            ),
+        ],
+    ),
+    (
+        name: "test_16_missing_optional_dependency",
+        deps: [
+            (
+                name: "b",
+            ),
+        ],
+        features: {
+            "d": [
+                "b/c",
+            ],
+        },
+    ),
+]

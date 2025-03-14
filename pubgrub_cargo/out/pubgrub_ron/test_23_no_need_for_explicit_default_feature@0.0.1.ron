@@ -1,0 +1,79 @@
+{
+    "Bucket:a@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:a@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1": {
+        "0.0.1": Ok({
+            "Bucket:a@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:a@0.0.1/default=true": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1/std": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:b@0.0.1/default": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:b@0.0.1/std": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_23_no_need_for_explicit_default_feature@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:b@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+            "Bucket:b@0.0.1/default=true": (
+                normal: [
+                    (Included("0.0.1"), Excluded("0.0.2")),
+                ],
+            ),
+        }),
+    },
+}

@@ -1,0 +1,24 @@
+[
+    (
+        name: "test_04_cyclic_features",
+        deps: [
+            (
+                name: "windows",
+                features: [
+                    "Win32_Foundation",
+                ],
+            ),
+        ],
+    ),
+    (
+        name: "windows",
+        features: {
+            "Win32": [
+                "Win32_Foundation",
+            ],
+            "Win32_Foundation": [
+                "Win32",
+            ],
+        },
+    ),
+]

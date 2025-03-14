@@ -1,0 +1,111 @@
+{
+    "Bucket:borsh@1.x.y": {
+        "1.4.0": Ok({}),
+    },
+    "Bucket:borsh@1.x.y/borsh-derive": {
+        "1.4.0": Ok({
+            "Bucket:borsh@1.x.y/dep:borsh-derive": (
+                normal: [
+                    (Included("1.4.0"), Included("1.4.0")),
+                ],
+            ),
+            "Bucket:borsh@1.x.y": (
+                normal: [
+                    (Included("1.4.0"), Included("1.4.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:borsh@1.x.y/dep:borsh-derive": {
+        "1.4.0": Ok({
+            "Bucket:borsh-derive@1.x.y": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+            "Bucket:borsh@1.x.y": (
+                normal: [
+                    (Included("1.4.0"), Included("1.4.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:borsh@1.x.y/std": {
+        "1.4.0": Ok({
+            "Bucket:borsh@1.x.y": (
+                normal: [
+                    (Included("1.4.0"), Included("1.4.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:rust_decimal@1.x.y": {
+        "1.35.0": Ok({}),
+    },
+    "Bucket:rust_decimal@1.x.y/default": {
+        "1.35.0": Ok({
+            "Bucket:rust_decimal@1.x.y": (
+                normal: [
+                    (Included("1.35.0"), Included("1.35.0")),
+                ],
+            ),
+            "Bucket:rust_decimal@1.x.y/dep:borsh": (
+                normal: [
+                    (Included("1.35.0"), Included("1.35.0")),
+                ],
+            ),
+            "Bucket:borsh@1.x.y/std": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:rust_decimal@1.x.y/default=true": {
+        "1.35.0": Ok({
+            "Bucket:rust_decimal@1.x.y": (
+                normal: [
+                    (Included("1.35.0"), Included("1.35.0")),
+                ],
+            ),
+            "Bucket:rust_decimal@1.x.y/default": (
+                normal: [
+                    (Included("1.35.0"), Included("1.35.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:rust_decimal@1.x.y/dep:borsh": {
+        "1.35.0": Ok({
+            "Bucket:rust_decimal@1.x.y": (
+                normal: [
+                    (Included("1.35.0"), Included("1.35.0")),
+                ],
+            ),
+            "Bucket:borsh@1.x.y": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+            "Bucket:borsh@1.x.y/borsh-derive": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_12_weak_dependencies@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:rust_decimal@1.x.y": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+            "Bucket:rust_decimal@1.x.y/default=true": (
+                normal: [
+                    (Included("1.0.0"), Excluded("2.0.0")),
+                ],
+            ),
+        }),
+    },
+}

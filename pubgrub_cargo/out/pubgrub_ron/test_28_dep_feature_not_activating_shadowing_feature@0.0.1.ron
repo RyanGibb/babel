@@ -1,0 +1,65 @@
+{
+    "Bucket:fuel-tx@0.0.1": {
+        "0.0.1": Ok({
+            "Bucket:serde@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+    "Bucket:fuel-tx@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:serde@0.0.1/default": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:fuel-tx@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:fuel-tx@0.0.1/default=true": {
+        "0.0.1": Ok({
+            "Bucket:fuel-tx@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+            "Bucket:fuel-tx@0.0.1/default": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:serde@0.0.1": {
+        "0.0.1": Ok({}),
+    },
+    "Bucket:serde@0.0.1/default": {
+        "0.0.1": Ok({
+            "Bucket:serde@0.0.1": (
+                normal: [
+                    (Included("0.0.1"), Included("0.0.1")),
+                ],
+            ),
+        }),
+    },
+    "Bucket:test_28_dep_feature_not_activating_shadowing_feature@0.0.1/All-FEATURES": {
+        "0.0.1": Ok({
+            "Bucket:fuel-tx@0.0.1": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+            "Bucket:fuel-tx@0.0.1/default=true": (
+                normal: [
+                    (Unbounded, Unbounded),
+                ],
+            ),
+        }),
+    },
+}
