@@ -1,7 +1,7 @@
 use cargo::util::interning::InternedString;
 use clap::Parser;
-use pubgrub::Range;
 use pubgrub::{DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter};
+use pubgrub::{Map, Range};
 use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_alpine::version::AlpineVersion;
 use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
@@ -203,7 +203,7 @@ struct Cli {
     packages: Vec<String>,
     /// List of variable assignments in the form `variable_name=value`
     #[clap(short, long, value_name = "VAR=value")]
-    variables: Vec<String>,
+    variables: Option<Vec<String>>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -254,24 +254,28 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         })
         .collect::<Vec<_>>();
-    let variables = args
-        .variables
-        .into_iter()
-        .map(|var_val| {
-            let parts: Vec<&str> = var_val.split('=').collect();
-            if parts.len() != 2 {
-                eprintln!("Invalid variable format: {}", var_val);
-                std::process::exit(1);
-            }
-            let var = parts[0];
-            let val = parts[1];
-            (
-                BabelPackage::Opam(OpamPackage::Var(var.to_string())),
-                BabelVersionSet::Opam(Range::singleton(OpamVersion(val.to_string()))),
-            )
-        })
-        .collect::<Vec<_>>();
-    packages.extend(variables);
+    match args.variables {
+        Some(v) => {
+            let variables = v
+                .into_iter()
+                .map(|var_val| {
+                    let parts: Vec<&str> = var_val.split('=').collect();
+                    if parts.len() != 2 {
+                        eprintln!("Invalid variable format: {}", var_val);
+                        std::process::exit(1);
+                    }
+                    let var = parts[0];
+                    let val = parts[1];
+                    (
+                        BabelPackage::Opam(OpamPackage::Var(var.to_string())),
+                        BabelVersionSet::Opam(Range::singleton(OpamVersion(val.to_string()))),
+                    )
+                })
+                .collect::<Vec<_>>();
+            packages.extend(variables);
+        }
+        None => {}
+    }
     let root = BabelPackage::Root(packages);
     solve_repo(
         root,

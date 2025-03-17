@@ -1,0 +1,30 @@
+[package]
+name = "babel_mcp_server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+tokio = { version = "1.36", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+futures = "0.3"
+pubgrub = { git = "https://github.com/pubgrub-rs/pubgrub", branch = "dev", features = ["serde"] }
+semver = { version = "1.0.24", features = ["serde"] }
+semver-pubgrub = { git = "https://github.com/pubgrub-rs/semver-pubgrub", features = ["serde"] }
+cargo = { git = "https://github.com/rust-lang/cargo", branch = "master" }
+crates-index = { version = "3.4", features = ["git", "git-https", "parallel"] }
+
+# MCP SDK dependencies
+mcp-core = { git = "https://github.com/modelcontextprotocol/rust-sdk" }
+mcp-server = { git = "https://github.com/modelcontextprotocol/rust-sdk" }
+
+# Babel dependencies
+pubgrub_babel = { path = "../pubgrub_babel" }
+pubgrub_cargo = { path = "../pubgrub_cargo" }
+pubgrub_debian = { path = "../pubgrub_debian" }
+pubgrub_opam = { path = "../pubgrub_opam" }
+pubgrub_alpine = { path = "../pubgrub_alpine" }

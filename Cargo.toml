@@ -5,5 +5,6 @@ members = [
     "pubgrub_opam",
     "pubgrub_alpine",
     "pubgrub_cargo",
+    "babel_mcp_server",
 ]
 resolver = "2"
