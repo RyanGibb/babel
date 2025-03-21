@@ -103,7 +103,7 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
         package: &Self::P,
         range: &Self::VS,
     ) -> Result<Option<Self::V>, Self::Err> {
-        match package {
+        let ver = match package {
             BabelPackage::Cargo(pkg) => {
                 let set = match range {
                     BabelVersionSet::Cargo(set) => set,
@@ -114,7 +114,7 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
                     .choose_version(pkg, set)?
                     .map(|v| BabelVersion::Cargo(v)))
             }
-            BabelPackage::Root(_) => Ok(Some(BabelVersion::Singular)),
+            BabelPackage::Root(_) => Ok(Some(BabelVersion::Babel("root".to_string()))),
             BabelPackage::Opam(OpamPackage::Depext { .. }) => Ok(vec![
                 BabelVersion::Opam(OpamVersion("alpine".to_string())),
                 BabelVersion::Opam(OpamVersion("debian".to_string())),
@@ -141,13 +141,17 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
                 .filter(|v| range.contains(v))
                 .next()),
             BabelPackage::Platform(PlatformPackage::OS) => Ok(vec![
-                BabelVersion::Platform("debian".to_string()),
-                BabelVersion::Platform("alpine".to_string()),
+                BabelVersion::Babel("debian".to_string()),
+                BabelVersion::Babel("alpine".to_string()),
             ]
             .into_iter()
             .filter(|v| range.contains(v))
             .next()),
+        };
+        if self.version_debug.get() {
+            println!("version of {}: {:?}", package, ver);
         }
+        ver
     }
 
     fn get_dependencies(
@@ -162,7 +166,7 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
             BabelPackage::Platform(PlatformPackage::OS) => {
                 let mut map = Map::default();
                 match version {
-                    BabelVersion::Platform(ver) => match ver.as_str() {
+                    BabelVersion::Babel(ver) => match ver.as_str() {
                         "debian" => {
                             map.insert(
                                 BabelPackage::Opam(OpamPackage::Var("os-distribution".to_string())),

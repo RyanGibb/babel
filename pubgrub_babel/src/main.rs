@@ -18,7 +18,7 @@ use pubgrub_opam::index::OpamIndex;
 use pubgrub_opam::version::OpamVersion;
 use semver::Version as CargoVersion;
 use semver_pubgrub::SemverPubgrub;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::error::Error;
 
 fn solve_repo(
@@ -38,10 +38,11 @@ fn solve_repo(
         "https://github.com/rust-lang/crates.io-index",
     )
     .unwrap();
-    let create_filter = |_name: &str| true;
-    let version_filter = |version: &index_data::Version| !version.yanked;
-    let data = read_index(&crates_index, create_filter, version_filter);
-    // let data = Map::default();
+
+    // let create_filter = |_name: &str| true;
+    // let version_filter = |version: &index_data::Version| !version.yanked;
+    // let data = read_index(&crates_index, create_filter, version_filter);
+    let data = Map::default();
     let cargo_index = CargoIndex::new(&data);
 
     let index = BabelIndex::new(opam_index, debian_index, alpine_index, cargo_index);
@@ -106,7 +107,7 @@ fn solve_repo(
     let mut resolved_graph = BTreeMap::new();
     for (root_package, root_version) in &sol {
         let mut transative_deps = vec![(root_package.clone(), root_version.clone())];
-        let mut deps = Vec::new();
+        let mut deps = HashSet::new();
         while let Some((package, version)) = transative_deps.pop() {
             let dependencies = index.get_dependencies(&package, &version);
             match dependencies {
@@ -116,13 +117,13 @@ fn solve_repo(
                         if let Some(dep_version) = sol.get(&dep_package) {
                             match &dep_package {
                                 BabelPackage::Opam(OpamPackage::Base(name)) => {
-                                    deps.push((format!("Opam {}", name), dep_version.clone()));
+                                    deps.insert((format!("Opam {}", name), dep_version.clone()));
                                 }
                                 BabelPackage::Opam(OpamPackage::Var(name)) => {
-                                    deps.push((format!("Opam {}", name), dep_version.clone()));
+                                    deps.insert((format!("Opam {}", name), dep_version.clone()));
                                 }
                                 BabelPackage::Debian(DebianPackage::Base(name)) => {
-                                    deps.push((format!("Debian {}", name), dep_version.clone()));
+                                    deps.insert((format!("Debian {}", name), dep_version.clone()));
                                 }
                                 BabelPackage::Alpine(AlpinePackage::Base(name)) => {
                                     if name.starts_with("so:")
@@ -134,14 +135,14 @@ fn solve_repo(
                                     {
                                         transative_deps.push((dep_package, solved_version.clone()));
                                     } else {
-                                        deps.push((
+                                        deps.insert((
                                             format!("Alpine {}", name),
                                             dep_version.clone(),
                                         ));
                                     }
                                 }
                                 BabelPackage::Cargo(CargoPackage::Bucket(name, _, _)) => {
-                                    deps.push((format!("Cargo {}", name), dep_version.clone()));
+                                    deps.insert((format!("Cargo {}", name), dep_version.clone()));
                                 }
                                 _ => {
                                     transative_deps.push((dep_package, solved_version.clone()));
@@ -149,7 +150,7 @@ fn solve_repo(
                             }
                         }
                     }
-                    deps.sort_by(|(p1, _), (p2, _)| p1.cmp(p2));
+                    Vec::from_iter(deps.clone().into_iter()).sort_by(|(p1, _), (p2, _)| p1.cmp(p2));
                 }
                 _ => {}
             };
@@ -279,7 +280,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let root = BabelPackage::Root(packages);
     solve_repo(
         root,
-        BabelVersion::Singular,
+        BabelVersion::Babel("root".to_string()),
         "pubgrub_opam/opam-repository/packages",
         "pubgrub_debian/repositories/buster/Packages",
         "pubgrub_alpine/repositories/3.20/APKINDEX",
@@ -437,7 +438,7 @@ mod tests {
         ]);
         solve_repo(
             root,
-            BabelVersion::Singular,
+            BabelVersion::Babel("root".to_string()),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
             "../pubgrub_alpine/repositories/3.20/APKINDEX",
@@ -467,7 +468,7 @@ mod tests {
         ]);
         solve_repo(
             root,
-            BabelVersion::Singular,
+            BabelVersion::Babel("root".to_string()),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
             "../pubgrub_alpine/repositories/3.20/APKINDEX",
@@ -489,7 +490,7 @@ mod tests {
         ]);
         solve_repo(
             root,
-            BabelVersion::Singular,
+            BabelVersion::Root,
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
             "../pubgrub_alpine/repositories/3.20/APKINDEX",
@@ -512,7 +513,7 @@ mod tests {
         )]);
         solve_repo(
             root,
-            BabelVersion::Singular,
+            BabelVersion::Babel("root".to_string()),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
             "../pubgrub_alpine/repositories/3.20/APKINDEX",

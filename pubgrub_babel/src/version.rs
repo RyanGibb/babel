@@ -8,8 +8,7 @@ use std::fmt;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Ord, PartialOrd)]
 pub enum BabelVersion {
-    Singular,
-    Platform(String),
+    Babel(String),
     Opam(OpamVersion),
     Debian(DebianVersion),
     Alpine(AlpineVersion),
@@ -19,8 +18,7 @@ pub enum BabelVersion {
 impl fmt::Display for BabelVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BabelVersion::Singular => write!(f, ""),
-            BabelVersion::Platform(ver) => write!(f, "{}", ver),
+            BabelVersion::Babel(ver) => write!(f, "{}", ver),
             BabelVersion::Opam(ver) => write!(f, "{}", ver),
             BabelVersion::Debian(ver) => write!(f, "{}", ver),
             BabelVersion::Alpine(ver) => write!(f, "{}", ver),
@@ -29,10 +27,11 @@ impl fmt::Display for BabelVersion {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Hash, Debug)]
 pub enum BabelVersionSet {
-    Singular,
-    Platform(Range<String>),
+    Empty,
+    Full,
+    Babel(Range<String>),
     Opam(Range<OpamVersion>),
     Debian(Range<DebianVersion>),
     Alpine(Range<AlpineVersion>),
@@ -41,14 +40,12 @@ pub enum BabelVersionSet {
 
 impl BabelVersionSet {
     pub fn empty() -> Self {
-        // TODO
-        BabelVersionSet::Platform(Range::empty())
+        BabelVersionSet::Empty
     }
 
     pub fn singleton(v: BabelVersion) -> Self {
         match v {
-            BabelVersion::Singular => BabelVersionSet::Singular,
-            BabelVersion::Platform(ver) => BabelVersionSet::Platform(Range::singleton(ver)),
+            BabelVersion::Babel(ver) => BabelVersionSet::Babel(Range::singleton(ver)),
             BabelVersion::Opam(ver) => BabelVersionSet::Opam(Range::singleton(ver)),
             BabelVersion::Debian(ver) => BabelVersionSet::Debian(Range::singleton(ver)),
             BabelVersion::Alpine(ver) => BabelVersionSet::Alpine(Range::singleton(ver)),
@@ -58,8 +55,9 @@ impl BabelVersionSet {
 
     pub fn complement(&self) -> Self {
         match self {
-            BabelVersionSet::Singular => BabelVersionSet::Singular,
-            BabelVersionSet::Platform(set) => BabelVersionSet::Platform(Range::complement(set)),
+            BabelVersionSet::Empty => BabelVersionSet::Full,
+            BabelVersionSet::Full => BabelVersionSet::Empty,
+            BabelVersionSet::Babel(set) => BabelVersionSet::Babel(Range::complement(set)),
             BabelVersionSet::Opam(set) => BabelVersionSet::Opam(Range::complement(set)),
             BabelVersionSet::Debian(set) => BabelVersionSet::Debian(Range::complement(set)),
             BabelVersionSet::Alpine(set) => BabelVersionSet::Alpine(Range::complement(set)),
@@ -69,9 +67,10 @@ impl BabelVersionSet {
 
     pub fn intersection(&self, other: &Self) -> Self {
         match (self, other) {
-            (BabelVersionSet::Singular, BabelVersionSet::Singular) => BabelVersionSet::Singular,
-            (BabelVersionSet::Platform(set), BabelVersionSet::Platform(other_set)) => {
-                BabelVersionSet::Platform(set.intersection(other_set))
+            (BabelVersionSet::Empty, _) | (_, BabelVersionSet::Empty) => BabelVersionSet::Empty,
+            (BabelVersionSet::Full, s) | (s, BabelVersionSet::Full) => s.clone(),
+            (BabelVersionSet::Babel(set), BabelVersionSet::Babel(other_set)) => {
+                BabelVersionSet::Babel(set.intersection(other_set))
             }
             (BabelVersionSet::Opam(set), BabelVersionSet::Opam(other_set)) => {
                 BabelVersionSet::Opam(set.intersection(other_set))
@@ -85,31 +84,32 @@ impl BabelVersionSet {
             (BabelVersionSet::Cargo(set), BabelVersionSet::Cargo(other_set)) => {
                 BabelVersionSet::Cargo(set.intersection(other_set))
             }
-            _ => panic!(),
+            _ => BabelVersionSet::Empty,
         }
     }
 
     pub fn contains(&self, v: &BabelVersion) -> bool {
         match (self, v) {
-            (BabelVersionSet::Singular, BabelVersion::Singular) => true,
-            (BabelVersionSet::Platform(set), BabelVersion::Platform(ver)) => set.contains(ver),
+            (BabelVersionSet::Full, _) => true,
+            (BabelVersionSet::Babel(set), BabelVersion::Babel(ver)) => set.contains(ver),
             (BabelVersionSet::Opam(set), BabelVersion::Opam(ver)) => set.contains(ver),
             (BabelVersionSet::Debian(set), BabelVersion::Debian(ver)) => set.contains(ver),
             (BabelVersionSet::Alpine(set), BabelVersion::Alpine(ver)) => set.contains(ver),
             (BabelVersionSet::Cargo(set), BabelVersion::Cargo(ver)) => set.contains(ver),
-            _ => panic!(),
+            _ => false,
         }
     }
 
     pub fn full() -> Self {
-        todo!()
+        BabelVersionSet::Full
     }
 
     pub fn union(&self, other: &Self) -> Self {
         match (self, other) {
-            (BabelVersionSet::Singular, BabelVersionSet::Singular) => BabelVersionSet::Singular,
-            (BabelVersionSet::Platform(set), BabelVersionSet::Platform(other_set)) => {
-                BabelVersionSet::Platform(set.union(other_set))
+            (BabelVersionSet::Full, s) | (s, BabelVersionSet::Full) => s.clone(),
+            (BabelVersionSet::Empty, _) | (_, BabelVersionSet::Empty) => BabelVersionSet::Empty,
+            (BabelVersionSet::Babel(set), BabelVersionSet::Babel(other_set)) => {
+                BabelVersionSet::Babel(set.union(other_set))
             }
             (BabelVersionSet::Opam(set), BabelVersionSet::Opam(other_set)) => {
                 BabelVersionSet::Opam(set.union(other_set))
@@ -128,47 +128,11 @@ impl BabelVersionSet {
     }
 
     pub fn is_disjoint(&self, other: &Self) -> bool {
-        match (self, other) {
-            (BabelVersionSet::Singular, BabelVersionSet::Singular) => false,
-            (BabelVersionSet::Platform(set), BabelVersionSet::Platform(other_set)) => {
-                set.is_disjoint(other_set)
-            }
-            (BabelVersionSet::Opam(set), BabelVersionSet::Opam(other_set)) => {
-                set.is_disjoint(other_set)
-            }
-            (BabelVersionSet::Debian(set), BabelVersionSet::Debian(other_set)) => {
-                set.is_disjoint(other_set)
-            }
-            (BabelVersionSet::Alpine(set), BabelVersionSet::Alpine(other_set)) => {
-                set.is_disjoint(other_set)
-            }
-            (BabelVersionSet::Cargo(set), BabelVersionSet::Cargo(other_set)) => {
-                set.is_disjoint(other_set)
-            }
-            _ => panic!(),
-        }
+        self.intersection(other) == Self::empty()
     }
 
     pub fn subset_of(&self, other: &Self) -> bool {
-        match (self, other) {
-            (BabelVersionSet::Singular, BabelVersionSet::Singular) => true,
-            (BabelVersionSet::Platform(set), BabelVersionSet::Platform(other_set)) => {
-                set.subset_of(other_set)
-            }
-            (BabelVersionSet::Opam(set), BabelVersionSet::Opam(other_set)) => {
-                set.subset_of(other_set)
-            }
-            (BabelVersionSet::Debian(set), BabelVersionSet::Debian(other_set)) => {
-                set.subset_of(other_set)
-            }
-            (BabelVersionSet::Alpine(set), BabelVersionSet::Alpine(other_set)) => {
-                set.subset_of(other_set)
-            }
-            (BabelVersionSet::Cargo(set), BabelVersionSet::Cargo(other_set)) => {
-                set.subset_of(other_set)
-            }
-            _ => panic!(),
-        }
+        self == &self.intersection(other)
     }
 }
 
@@ -212,11 +176,47 @@ impl VersionSet for BabelVersionSet {
     }
 }
 
+impl PartialEq for BabelVersionSet {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (BabelVersionSet::Full, BabelVersionSet::Full)
+            | (BabelVersionSet::Empty, BabelVersionSet::Empty) => true,
+            (BabelVersionSet::Full, o) | (o, BabelVersionSet::Full) => match o {
+                BabelVersionSet::Babel(set) => set == &Range::<String>::full(),
+                BabelVersionSet::Opam(set) => set == &Range::<OpamVersion>::full(),
+                BabelVersionSet::Debian(set) => set == &Range::<DebianVersion>::full(),
+                BabelVersionSet::Alpine(set) => set == &Range::<AlpineVersion>::full(),
+                BabelVersionSet::Cargo(set) => set == &RcSemverPubgrub::full(),
+                _ => false,
+            },
+            (BabelVersionSet::Empty, o) | (o, BabelVersionSet::Empty) => {
+                match o {
+                    BabelVersionSet::Babel(set) => set == &Range::<String>::empty(),
+                    BabelVersionSet::Opam(set) => set == &Range::<OpamVersion>::empty(),
+                    BabelVersionSet::Debian(set) => set == &Range::<DebianVersion>::empty(),
+                    BabelVersionSet::Alpine(set) => set == &Range::<AlpineVersion>::empty(),
+                    BabelVersionSet::Cargo(set) => set == &RcSemverPubgrub::empty(),
+                    _ => false,
+                }
+            }
+            (BabelVersionSet::Babel(set), BabelVersionSet::Babel(other_set)) => set == other_set,
+            (BabelVersionSet::Opam(set), BabelVersionSet::Opam(other_set)) => set == other_set,
+            (BabelVersionSet::Debian(set), BabelVersionSet::Debian(other_set)) => set == other_set,
+            (BabelVersionSet::Alpine(set), BabelVersionSet::Alpine(other_set)) => set == other_set,
+            (BabelVersionSet::Cargo(set), BabelVersionSet::Cargo(other_set)) => set == other_set,
+            _ => self == other,
+        }
+    }
+}
+
+impl Eq for BabelVersionSet {}
+
 impl fmt::Display for BabelVersionSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BabelVersionSet::Singular => write!(f, ""),
-            BabelVersionSet::Platform(set) => write!(f, "{}", set),
+            BabelVersionSet::Empty => write!(f, "Empty"),
+            BabelVersionSet::Full => write!(f, "Full"),
+            BabelVersionSet::Babel(set) => write!(f, "{}", set),
             BabelVersionSet::Opam(set) => write!(f, "{}", set),
             BabelVersionSet::Debian(set) => write!(f, "{}", set),
             BabelVersionSet::Alpine(set) => write!(f, "{}", set),
