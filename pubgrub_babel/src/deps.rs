@@ -1,7 +1,8 @@
 use crate::index::BabelIndex;
 use crate::version::{BabelVersion, BabelVersionSet};
 use core::fmt::Display;
-use pubgrub::{Dependencies, DependencyProvider, Map, Range};
+use std::collections::HashMap;
+use pubgrub::{Dependencies, DependencyConstraints, DependencyProvider, Map, Range};
 
 use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_alpine::version::AlpineVersion;
@@ -223,6 +224,7 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
                                 // TODO handle virtual packages
                                 match v.as_str() {
                                     "debian" => {
+                                        map.insert(BabelPackage::Platform(PlatformPackage::OS), BabelVersionSet::Babel(Range::singleton("debian")));
                                         if contains_os_condition(formula, "debian") {
                                             map.insert(
                                                 BabelPackage::Debian(DebianPackage::Base(
@@ -235,6 +237,7 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
                                         }
                                     }
                                     "alpine" => {
+                                        map.insert(BabelPackage::Platform(PlatformPackage::OS), BabelVersionSet::Babel(Range::singleton("alpine")));
                                         if contains_os_condition(formula, "alpine") {
                                             map.insert(
                                                 BabelPackage::Alpine(AlpinePackage::Base(
@@ -275,13 +278,16 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
                 if let BabelVersion::Debian(ver) = version {
                     let deps = match self.debian.get_dependencies(pkg, ver) {
                         Ok(Dependencies::Unavailable(m)) => Dependencies::Unavailable(m),
-                        Ok(Dependencies::Available(dc)) => Dependencies::Available(
-                            dc.into_iter()
+                        Ok(Dependencies::Available(dc)) => {
+                            let mut dc: DependencyConstraints<Self::P, Self::VS> = dc
+                                .into_iter()
                                 .map(|(p, vs)| {
                                     (BabelPackage::Debian(p), BabelVersionSet::Debian(vs))
                                 })
-                                .collect(),
-                        ),
+                                .collect();
+                            dc.insert(BabelPackage::Platform(PlatformPackage::OS), BabelVersionSet::Babel(Range::singleton("debian")));
+                            Dependencies::Available(dc)
+                        }
                         _ => panic!(),
                     };
                     Ok(deps)
@@ -293,13 +299,16 @@ impl<'a> DependencyProvider for BabelIndex<'a> {
                 if let BabelVersion::Alpine(ver) = version {
                     let deps = match self.alpine.get_dependencies(pkg, ver) {
                         Ok(Dependencies::Unavailable(m)) => Dependencies::Unavailable(m),
-                        Ok(Dependencies::Available(dc)) => Dependencies::Available(
-                            dc.into_iter()
+                        Ok(Dependencies::Available(dc)) => {
+                            let mut dc: DependencyConstraints<Self::P, Self::VS> = dc
+                                .into_iter()
                                 .map(|(p, vs)| {
                                     (BabelPackage::Alpine(p), BabelVersionSet::Alpine(vs))
                                 })
-                                .collect(),
-                        ),
+                                .collect();
+                            dc.insert(BabelPackage::Platform(PlatformPackage::OS), BabelVersionSet::Babel(Range::singleton("alpine")));
+                            Dependencies::Available(dc)
+                        }
                         Err(_) => panic!(),
                     };
                     Ok(deps)

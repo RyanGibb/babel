@@ -5,8 +5,8 @@ use rmcp::{
     self, ServerHandler, tool, Error as McpError,
     model::{self, CallToolResult, Content, ServerCapabilities, ServerInfo, ProtocolVersion, Implementation},
 };
-use pubgrub::{DefaultStringReporter, Map, PubGrubError, Reporter};
-use pubgrub_babel::deps::BabelPackage;
+use pubgrub::{DefaultStringReporter, Map, PubGrubError, Reporter, VersionSet};
+use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
 use pubgrub_babel::index::BabelIndex;
 use pubgrub_babel::version::BabelVersion;
 use pubgrub_cargo::names::Names as CargoPackage;
@@ -16,6 +16,7 @@ use pubgrub_opam::deps::OpamPackage;
 use pubgrub_opam::version::OpamVersion;
 use semver::Version as CargoVersion;
 use semver_pubgrub::SemverPubgrub;
+use pubgrub_cargo::rc_semver_pubgrub::RcSemverPubgrub;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -62,8 +63,11 @@ impl BabelHandler {
         #[tool(param)]
         #[schemars(description = "The package version")]
         version: String,
+        #[tool(param)]
+        #[schemars(description = "The platform to use (alpine, debian)")]
+        platform: Option<String>,
     ) -> Result<CallToolResult, McpError> {
-        match resolve_package_dependencies(&ecosystem, &package, &version) {
+        match resolve_package_dependencies(&ecosystem, &package, &version, platform.as_deref()) {
             Ok(result) => Ok(CallToolResult::success(vec![Content::text(result)])),
             Err(e) => {
                 tracing::warn!("Failed to resolve dependencies: {}", e);
@@ -96,45 +100,115 @@ fn resolve_package_dependencies(
     ecosystem: &str,
     package: &str,
     version: &str,
+    platform: Option<&str>,
 ) -> Result<String, String> {
+    use pubgrub::Range;
+    use pubgrub_babel::version::BabelVersionSet;
+    
     let babel_package: BabelPackage<'static>;
     let babel_version: BabelVersion;
 
-    match ecosystem {
-        "opam" => {
-            babel_package = BabelPackage::Opam(OpamPackage::Base(package.to_string()));
-            babel_version = BabelVersion::Opam(OpamVersion(version.to_string()));
+    // If a platform is specified, we'll create a root package with both the requested package
+    // and a platform dependency
+    if let Some(platform_name) = platform {
+        // Validate platform - only alpine and debian are supported
+        if platform_name != "alpine" && platform_name != "debian" {
+            return Err(format!("Unsupported platform: {}. Only 'alpine' and 'debian' are supported.", platform_name));
         }
-        "debian" => {
-            babel_package = BabelPackage::Debian(DebianPackage::Base(package.to_string()));
-            babel_version = BabelVersion::Debian(DebianVersion(version.to_string()));
-        }
-        "alpine" => {
-            babel_package = BabelPackage::Alpine(pubgrub_alpine::deps::AlpinePackage::Base(
-                package.to_string(),
-            ));
-            babel_version =
-                BabelVersion::Alpine(pubgrub_alpine::version::AlpineVersion(version.to_string()));
-        }
-        "cargo" => {
-            // Convert to cargo package format
-            let ver = match version.parse::<CargoVersion>() {
-                Ok(v) => v,
-                Err(e) => return Err(format!("Invalid Cargo version: {}", e)),
-            };
+        
+        // First, create the package dependency based on ecosystem
+        let (dep_package, dep_version_set) = match ecosystem {
+            "opam" => {
+                (
+                    BabelPackage::Opam(OpamPackage::Base(package.to_string())),
+                    BabelVersionSet::Opam(Range::singleton(OpamVersion(version.to_string()))),
+                )
+            }
+            "debian" => {
+                (
+                    BabelPackage::Debian(DebianPackage::Base(package.to_string())),
+                    BabelVersionSet::Debian(Range::singleton(DebianVersion(version.to_string()))),
+                )
+            }
+            "alpine" => {
+                (
+                    BabelPackage::Alpine(pubgrub_alpine::deps::AlpinePackage::Base(package.to_string())),
+                    BabelVersionSet::Alpine(Range::singleton(pubgrub_alpine::version::AlpineVersion(version.to_string()))),
+                )
+            }
+            "cargo" => {
+                // Convert to cargo package format
+                let ver = match version.parse::<CargoVersion>() {
+                    Ok(v) => v,
+                    Err(e) => return Err(format!("Invalid Cargo version: {}", e)),
+                };
 
-            let pkg = CargoPackage::Bucket(
-                InternedString::from(package.to_string()),
-                SemverPubgrub::<semver::Version>::singleton(ver.clone())
-                    .only_one_compatibility_range()
-                    .ok_or("Could not get compatibility range")?,
-                false,
-            );
-            babel_package = BabelPackage::Cargo(pkg);
-            // TODO error handling
-            babel_version = BabelVersion::Cargo(ver);
+                let pkg = CargoPackage::Bucket(
+                    InternedString::from(package.to_string()),
+                    SemverPubgrub::<semver::Version>::singleton(ver.clone())
+                        .only_one_compatibility_range()
+                        .ok_or("Could not get compatibility range")?,
+                    false,
+                );
+                
+                {
+                    let semver_pubgrub = SemverPubgrub::singleton(ver);
+                    (
+                        BabelPackage::Cargo(pkg),
+                        BabelVersionSet::Cargo(RcSemverPubgrub::new(semver_pubgrub)),
+                    )
+                }
+            }
+            _ => return Err(format!("Unsupported ecosystem: {}", ecosystem)),
+        };
+        
+        // Create the root package with both dependencies
+        babel_package = BabelPackage::Root(vec![
+            (dep_package, dep_version_set),
+            (
+                BabelPackage::Platform(pubgrub_babel::deps::PlatformPackage::OS),
+                BabelVersionSet::Babel(Range::singleton(platform_name.to_string())),
+            ),
+        ]);
+        babel_version = BabelVersion::Babel("root".to_string());
+    } else {
+        // No platform specified, use the ecosystem-specific package directly
+        match ecosystem {
+            "opam" => {
+                babel_package = BabelPackage::Opam(OpamPackage::Base(package.to_string()));
+                babel_version = BabelVersion::Opam(OpamVersion(version.to_string()));
+            }
+            "debian" => {
+                babel_package = BabelPackage::Debian(DebianPackage::Base(package.to_string()));
+                babel_version = BabelVersion::Debian(DebianVersion(version.to_string()));
+            }
+            "alpine" => {
+                babel_package = BabelPackage::Alpine(pubgrub_alpine::deps::AlpinePackage::Base(
+                    package.to_string(),
+                ));
+                babel_version =
+                    BabelVersion::Alpine(pubgrub_alpine::version::AlpineVersion(version.to_string()));
+            }
+            "cargo" => {
+                // Convert to cargo package format
+                let ver = match version.parse::<CargoVersion>() {
+                    Ok(v) => v,
+                    Err(e) => return Err(format!("Invalid Cargo version: {}", e)),
+                };
+
+                let pkg = CargoPackage::Bucket(
+                    InternedString::from(package.to_string()),
+                    SemverPubgrub::<semver::Version>::singleton(ver.clone())
+                        .only_one_compatibility_range()
+                        .ok_or("Could not get compatibility range")?,
+                    false,
+                );
+                babel_package = BabelPackage::Cargo(pkg);
+                // TODO error handling
+                babel_version = BabelVersion::Cargo(ver);
+            }
+            _ => return Err(format!("Unsupported ecosystem: {}", ecosystem)),
         }
-        _ => return Err(format!("Unsupported ecosystem: {}", ecosystem)),
     }
 
     // Set up the repositories
@@ -193,6 +267,13 @@ fn resolve_package_dependencies(
                     "version": ver.to_string()
                 }));
             }
+            // BabelPackage::Opam(OpamPackage::Var(name)) => {
+            //     deps.push(json!({
+            //         "ecosystem": "opam variable",
+            //         "name": name,
+            //         "version": ver.to_string()
+            //     }));
+            // }
             BabelPackage::Debian(DebianPackage::Base(name)) => {
                 deps.push(json!({
                     "ecosystem": "debian",
@@ -217,18 +298,30 @@ fn resolve_package_dependencies(
                     "version": ver.to_string()
                 }));
             }
+            // BabelPackage::Platform(PlatformPackage::OS) => {
+            //     deps.push(json!({
+            //         "ecosystem": "babel",
+            //         "name": "PLATFORM",
+            //         "version": ver.to_string()
+            //     }));
+            // }
             _ => {} // Skip other package types
         }
     }
 
     // Create the final result
-    let result = json!({
+    let mut result = json!({
         "ecosystem": ecosystem,
         "package": package,
         "version": version,
         "resolved": true,
         "dependencies": deps
     });
+
+    // Add platform information if specified
+    if let Some(platform_name) = platform {
+        result["platform"] = json!(platform_name);
+    }
 
     Ok(result.to_string())
 }

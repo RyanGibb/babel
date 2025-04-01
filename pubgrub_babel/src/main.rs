@@ -1,7 +1,7 @@
 use cargo::util::interning::InternedString;
 use clap::Parser;
 use pubgrub::{DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter};
-use pubgrub::Range;
+use pubgrub::{Map, Range};
 use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_alpine::version::AlpineVersion;
 use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
@@ -39,9 +39,10 @@ fn solve_repo(
     )
     .unwrap();
 
-    let create_filter = |_name: &str| true;
-    let version_filter = |version: &index_data::Version| !version.yanked;
-    let data = read_index(&crates_index, create_filter, version_filter);
+    // let create_filter = |_name: &str| true;
+    // let version_filter = |version: &index_data::Version| !version.yanked;
+    // let data = read_index(&crates_index, create_filter, version_filter);
+    let data = Map::default();
     let cargo_index = CargoIndex::new(&data);
 
     let index = BabelIndex::new(opam_index, debian_index, alpine_index, cargo_index);
@@ -489,7 +490,7 @@ mod tests {
         ]);
         solve_repo(
             root,
-            BabelVersion::Root,
+            BabelVersion::Babel("".to_string()),
             "../pubgrub_opam/opam-repository/packages",
             "../pubgrub_debian/repositories/buster/Packages",
             "../pubgrub_alpine/repositories/3.20/APKINDEX",
@@ -510,6 +511,51 @@ mod tests {
             BabelPackage::Cargo(pkg),
             BabelVersionSet::Cargo(RcSemverPubgrub::new(ver)),
         )]);
+        solve_repo(
+            root,
+            BabelVersion::Babel("root".to_string()),
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
+            "../pubgrub_cargo/index",
+        )
+    }
+
+    #[test]
+    fn test_gmp_platform_alpine() -> Result<(), Box<dyn Error>> {
+        let root = BabelPackage::Root(vec![
+            (
+                BabelPackage::Opam(OpamPackage::Base("conf-gmp".to_string())),
+                BabelVersionSet::Opam(Range::singleton(OpamVersion("4".to_string()))),
+            ),
+            (
+                BabelPackage::Platform(PlatformPackage::OS),
+                BabelVersionSet::Babel(Range::singleton("alpine")),
+            ),
+        ]);
+        solve_repo(
+            root,
+            BabelVersion::Babel("root".to_string()),
+            "../pubgrub_opam/opam-repository/packages",
+            "../pubgrub_debian/repositories/buster/Packages",
+            "../pubgrub_alpine/repositories/3.20/APKINDEX",
+            "../pubgrub_cargo/index",
+        )
+    }
+
+    #[test]
+    fn test_gmp_platform_debian() -> Result<(), Box<dyn Error>> {
+        let root = BabelPackage::Root(vec![
+            (
+                BabelPackage::Opam(OpamPackage::Base("conf-gmp".to_string())),
+                BabelVersionSet::Opam(Range::singleton(OpamVersion("4".to_string()))),
+            ),
+            (
+                BabelPackage::Platform(PlatformPackage::OS),
+                // can also be "debian"
+                BabelVersionSet::Babel(Range::singleton("debian")),
+            ),
+        ]);
         solve_repo(
             root,
             BabelVersion::Babel("root".to_string()),
