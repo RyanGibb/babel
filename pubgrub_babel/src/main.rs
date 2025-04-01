@@ -1,7 +1,7 @@
 use cargo::util::interning::InternedString;
 use clap::Parser;
 use pubgrub::{DefaultStringReporter, Dependencies, DependencyProvider, PubGrubError, Reporter};
-use pubgrub::{Map, Range};
+use pubgrub::Range;
 use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_alpine::version::AlpineVersion;
 use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
@@ -39,10 +39,9 @@ fn solve_repo(
     )
     .unwrap();
 
-    // let create_filter = |_name: &str| true;
-    // let version_filter = |version: &index_data::Version| !version.yanked;
-    // let data = read_index(&crates_index, create_filter, version_filter);
-    let data = Map::default();
+    let create_filter = |_name: &str| true;
+    let version_filter = |version: &index_data::Version| !version.yanked;
+    let data = read_index(&crates_index, create_filter, version_filter);
     let cargo_index = CargoIndex::new(&data);
 
     let index = BabelIndex::new(opam_index, debian_index, alpine_index, cargo_index);
