@@ -113,16 +113,24 @@ pub async fn run_http_server(bind_address: &str, sse_path: &str, post_path: &str
         }
     }
     
-    // Create a CORS layer to allow all origins
-    use axum::http::Method;
-    use tower_http::cors::{Any, CorsLayer};
+    // Create a basic CORS layer
+    use axum::http::{Method, HeaderName};
+    use tower_http::cors::CorsLayer;
+    
+    let allowed_origins = [
+        "https://claude.ai".parse().unwrap(),
+        "http://localhost:3000".parse().unwrap(),
+        "http://localhost:8001".parse().unwrap(),
+    ];
     
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(allowed_origins)
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers(Any)
-        .expose_headers(Any)
-        .allow_credentials(true);
+        .allow_headers([
+            HeaderName::from_static("content-type"),
+            HeaderName::from_static("authorization"),
+            HeaderName::from_static("x-requested-with"),
+        ]);
     
     // Instead of wrapping the RMCP router, merge our routes into it
     // This ensures we don't interfere with the SSE content type headers
