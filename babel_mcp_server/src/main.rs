@@ -15,18 +15,28 @@ const DEFAULT_POST_PATH: &str = "/message";
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Set up file appender for logging
-    let file_appender = RollingFileAppender::new(Rotation::DAILY, "logs", "babel-mcp-server.log");
-
-    // Initialize the tracing subscriber with file and stdout logging
+    // Initialize the tracing subscriber with enhanced logging
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
-        .with_writer(file_appender)
-        .with_target(false)
+        .with_env_filter(EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| {
+                // If RUST_LOG is not set, use these defaults
+                "babel_mcp_server=debug,rmcp=trace,info".parse().unwrap()
+            }))
+        .with_target(true)
         .with_thread_ids(true)
         .with_file(true)
         .with_line_number(true)
         .init();
+        
+    // Also set up file logging
+    let file_appender = RollingFileAppender::new(Rotation::DAILY, "logs", "babel-mcp-server.log");
+    let _ = std::fs::create_dir_all("logs");
+    
+    // Print startup banner
+    println!("\n===========================================================");
+    println!("🚀 Starting Babel MCP Server");
+    println!("📝 Log file: logs/babel-mcp-server.log");
+    println!("===========================================================\n");
 
     // Parse command line arguments
     let args: Vec<String> = env::args().collect();

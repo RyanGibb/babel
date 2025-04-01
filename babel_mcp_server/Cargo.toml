@@ -18,7 +18,10 @@ semver = { version = "1.0.24", features = ["serde"] }
 semver-pubgrub = { git = "https://github.com/pubgrub-rs/semver-pubgrub", features = ["serde"] }
 cargo = { git = "https://github.com/rust-lang/cargo", branch = "master" }
 crates-index = { version = "3.4", features = ["git", "git-https", "parallel"] }
-axum = { version = "0.8" }
+axum = { version = "0.8", features = ["macros"] }
+http = "1.0"
+tower-http = { version = "0.5", features = ["cors"] }
+chrono = { version = "0.4", features = ["serde"] }
 schemars = "0.8"
 
 # MCP SDK dependencies (using RMCP)
