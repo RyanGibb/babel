@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 tokio = { version = "1.36", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tracing = "0.1"
@@ -17,10 +18,11 @@ semver = { version = "1.0.24", features = ["serde"] }
 semver-pubgrub = { git = "https://github.com/pubgrub-rs/semver-pubgrub", features = ["serde"] }
 cargo = { git = "https://github.com/rust-lang/cargo", branch = "master" }
 crates-index = { version = "3.4", features = ["git", "git-https", "parallel"] }
+axum = { version = "0.8" }
+schemars = "0.8"
 
-# MCP SDK dependencies
-mcp-core = { git = "https://github.com/modelcontextprotocol/rust-sdk" }
-mcp-server = { git = "https://github.com/modelcontextprotocol/rust-sdk" }
+# MCP SDK dependencies (using RMCP)
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", branch = "main", features = ["server", "transport-sse-server", "transport-io"] }
 
 # Babel dependencies
 pubgrub_babel = { path = "../pubgrub_babel" }
