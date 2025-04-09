@@ -6,9 +6,9 @@ use rmcp::{
     model::{self, CallToolResult, Content, ServerCapabilities, ServerInfo, ProtocolVersion, Implementation},
 };
 use pubgrub::{DefaultStringReporter, Map, PubGrubError, Reporter, VersionSet};
-use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
-use pubgrub_babel::index::BabelIndex;
-use pubgrub_babel::version::BabelVersion;
+use enki_solver::deps::{BabelPackage, PlatformPackage};
+use enki_solver::index::BabelIndex;
+use enki_solver::version::BabelVersion;
 use pubgrub_cargo::names::Names as CargoPackage;
 use pubgrub_debian::deps::DebianPackage;
 use pubgrub_debian::version::DebianVersion;
@@ -103,7 +103,7 @@ fn resolve_package_dependencies(
     platform: Option<&str>,
 ) -> Result<String, String> {
     use pubgrub::Range;
-    use pubgrub_babel::version::BabelVersionSet;
+    use enki_solver::version::BabelVersionSet;
     
     let babel_package: BabelPackage<'static>;
     let babel_version: BabelVersion;
@@ -166,7 +166,7 @@ fn resolve_package_dependencies(
         babel_package = BabelPackage::Root(vec![
             (dep_package, dep_version_set),
             (
-                BabelPackage::Platform(pubgrub_babel::deps::PlatformPackage::OS),
+                BabelPackage::Platform(enki_solver::deps::PlatformPackage::OS),
                 BabelVersionSet::Babel(Range::singleton(platform_name.to_string())),
             ),
         ]);

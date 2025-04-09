@@ -2,3 +2,4 @@ target
 pubgrub_opam/opam-repository
 pubgrub_debian/repositories
 pubgrub_alpine/repositories
+logs

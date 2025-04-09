@@ -216,37 +216,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "babel_mcp_server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "cargo",
- "chrono",
- "crates-index",
- "futures",
- "http",
- "pubgrub",
- "pubgrub_alpine",
- "pubgrub_babel",
- "pubgrub_cargo",
- "pubgrub_debian",
- "pubgrub_opam",
- "rmcp",
- "schemars",
- "semver",
- "semver-pubgrub",
- "serde",
- "serde_json",
- "tokio",
- "tokio-util",
- "tower-http",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "backtrace"
 version = "0.3.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1018,6 +987,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75030f3c4f45dafd7586dd6780965a8c7e8e285a5ecb86713e63a79c5b2766f3"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "enki_solver"
+version = "0.1.0"
+dependencies = [
+ "cargo",
+ "clap",
+ "crates-index",
+ "pubgrub",
+ "pubgrub_alpine",
+ "pubgrub_cargo",
+ "pubgrub_debian",
+ "pubgrub_opam",
+ "semver",
+ "semver-pubgrub",
 ]
 
 [[package]]
@@ -3378,6 +3363,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "mcp_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "cargo",
+ "chrono",
+ "crates-index",
+ "enki_solver",
+ "futures",
+ "http",
+ "pubgrub",
+ "pubgrub_alpine",
+ "pubgrub_cargo",
+ "pubgrub_debian",
+ "pubgrub_opam",
+ "rmcp",
+ "schemars",
+ "semver",
+ "semver-pubgrub",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tower-http",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3773,22 +3789,6 @@ version = "0.1.0"
 dependencies = [
  "pubgrub",
  "rustc-hash 1.1.0",
-]
-
-[[package]]
-name = "pubgrub_babel"
-version = "0.1.0"
-dependencies = [
- "cargo",
- "clap",
- "crates-index",
- "pubgrub",
- "pubgrub_alpine",
- "pubgrub_cargo",
- "pubgrub_debian",
- "pubgrub_opam",
- "semver",
- "semver-pubgrub",
 ]
 
 [[package]]

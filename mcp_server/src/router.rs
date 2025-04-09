@@ -9,9 +9,9 @@ use mcp_core::{
 };
 use mcp_server::router::CapabilitiesBuilder;
 use pubgrub::{DefaultStringReporter, Map, PubGrubError, Reporter};
-use pubgrub_babel::deps::BabelPackage;
-use pubgrub_babel::index::BabelIndex;
-use pubgrub_babel::version::BabelVersion;
+use enki_solver::deps::BabelPackage;
+use enki_solver::index::BabelIndex;
+use enki_solver::version::BabelVersion;
 use pubgrub_cargo::names::Names as CargoPackage;
 use pubgrub_debian::deps::DebianPackage;
 use pubgrub_debian::version::DebianVersion;

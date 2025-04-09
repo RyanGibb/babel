@@ -4,9 +4,9 @@ use pubgrub::{DefaultStringReporter, Dependencies, DependencyProvider, PubGrubEr
 use pubgrub::{Map, Range};
 use pubgrub_alpine::deps::AlpinePackage;
 use pubgrub_alpine::version::AlpineVersion;
-use pubgrub_babel::deps::{BabelPackage, PlatformPackage};
-use pubgrub_babel::index::BabelIndex;
-use pubgrub_babel::version::{BabelVersion, BabelVersionSet};
+use enki_solver::deps::{BabelPackage, PlatformPackage};
+use enki_solver::index::BabelIndex;
+use enki_solver::version::{BabelVersion, BabelVersionSet};
 use pubgrub_cargo::index_data;
 use pubgrub_cargo::names::Names as CargoPackage;
 use pubgrub_cargo::rc_semver_pubgrub::RcSemverPubgrub;
